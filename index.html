@@ -1056,6 +1056,23 @@
             saveDataLocally('categories');
           }
 
+          // Fetch Products from Supabase
+          const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
+          if (!prodErr && dbProducts && dbProducts.length > 0) {
+            state.products = dbProducts.map(p => ({
+              id: String(p.id),
+              name: p.name,
+              category: p.category || p.category_id || 'lanches',
+              price: parseFloat(p.price || 0),
+              image: p.image || p.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
+              description: p.description || '',
+              featured: !!(p.featured !== undefined ? p.featured : p.is_featured),
+              available: p.available !== undefined ? p.available : (p.is_available !== undefined ? p.is_available : true),
+              additionals: p.additionals || []
+            }));
+            saveDataLocally('products');
+          }
+
           // Fetch Orders
           const { data: dbOrders, error: ordErr } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
           if (!ordErr && dbOrders && dbOrders.length > 0) {
@@ -1147,6 +1164,12 @@
         const channel = _supabase
           .channel('public:orders_sync')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+             initData(true);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+             initData(true);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
              initData(true);
           });
 
@@ -1945,7 +1968,9 @@
         if (_supabase) {
           try {
             await _supabase.from('categories').update({ slug, name, icon }).eq('id', catId);
-          } catch(err) {}
+          } catch(err) {
+            console.error('Erro ao atualizar categoria no Supabase:', err);
+          }
         }
         showToast('Categoria atualizada com sucesso!', 'success');
       } else {
@@ -1958,11 +1983,15 @@
 
         if (_supabase) {
           try {
-            const { data } = await _supabase.from('categories').insert([{ slug, name, icon }]).select();
-            if (data && data.length > 0) {
+            const { data, error } = await _supabase.from('categories').insert([{ slug, name, icon }]).select();
+            if (error) {
+              console.error('Erro ao salvar categoria no Supabase:', error);
+            } else if (data && data.length > 0) {
               newCat.id = data[0].id;
             }
-          } catch(err) {}
+          } catch(err) {
+            console.error('Erro ao inserir categoria:', err);
+          }
         }
 
         state.categories.push(newCat);
@@ -2052,11 +2081,16 @@
       `).join('');
     }
 
-    function toggleProductAvailability(productId) {
+    async function toggleProductAvailability(productId) {
       const p = state.products.find(x => x.id === productId);
       if (!p) return;
       p.available = !p.available;
       saveDataLocally('products');
+      if (_supabase) {
+        try {
+          await _supabase.from('products').update({ available: p.available }).eq('id', productId);
+        } catch(e) {}
+      }
       renderAdminProductsTable();
     }
 
@@ -2113,6 +2147,18 @@
           p.description = description;
           p.featured = featured;
         }
+        if (_supabase) {
+          try {
+            await _supabase.from('products').update({
+              name,
+              category,
+              price,
+              image,
+              description,
+              featured
+            }).eq('id', id);
+          } catch(err) {}
+        }
       } else {
         const newP = {
           id: 'p' + Date.now(),
@@ -2125,21 +2171,45 @@
           available: true,
           additionals: []
         };
+        if (_supabase) {
+          try {
+            const { data } = await _supabase.from('products').insert([{
+              name,
+              category,
+              price,
+              image,
+              description,
+              featured,
+              available: true,
+              additionals: []
+            }]).select();
+            if (data && data.length > 0) {
+              newP.id = String(data[0].id);
+            }
+          } catch(err) {}
+        }
         state.products.push(newP);
       }
 
       saveDataLocally('products');
       renderAdminProductsTable();
+      renderProducts();
       closeAdminProductModal();
       showToast('Produto salvo com sucesso!', 'success');
     }
 
     function confirmDeleteProduct(productId) {
-      openConfirmModal('Excluir Produto', 'Deseja realmente remover este produto do cardápio?', (confirmed) => {
+      openConfirmModal('Excluir Produto', 'Deseja realmente remover este produto do cardápio?', async (confirmed) => {
         if (!confirmed) return;
         state.products = state.products.filter(p => p.id !== productId);
         saveDataLocally('products');
+        if (_supabase) {
+          try {
+            await _supabase.from('products').delete().eq('id', productId);
+          } catch(e) {}
+        }
         renderAdminProductsTable();
+        renderProducts();
         showToast('Produto removido.', 'info');
       });
     }
