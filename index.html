@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaborExpress - Pedidos & Delivery</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+              dark: '#0f172a',
+              accent: '#f97316'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .pulse-ring {
+      box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7);
+      animation: pulse-animation 1.8s infinite;
+    }
+    @keyframes pulse-animation {
+      0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col custom-scrollbar antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- ========================================================================= -->
+  <!-- PUBLIC CUSTOMER NAVBAR -->
+  <!-- ========================================================================= -->
+  <header id="public-header" class="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo / Store Title -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="resetCustomerView()">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-accent flex items-center justify-center shadow-lg shadow-brand-600/30">
+            <i class="fa-solid fa-utensils text-white text-lg"></i>
+          </div>
+          <div>
+            <span class="font-extrabold text-xl tracking-tight text-gray-900 block leading-none" id="nav-store-name">Sabor<span class="text-brand-600">Express</span></span>
+            <span class="text-[10px] text-gray-400 font-medium tracking-wider uppercase">Pedidos & Delivery</span>
+          </div>
+        </div>
+
+        <!-- Customer Utilities -->
+        <div class="flex items-center gap-3">
+          <!-- Active Track Button if Order Exists -->
+          <button id="btn-active-track" onclick="openTrackModal()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2 pulse-ring">
+            <i class="fa-solid fa-motorcycle text-sm"></i>
+            <span class="hidden sm:inline">Acompanhar Pedido</span>
+          </button>
+
+          <!-- History -->
+          <button onclick="openHistoryModal()" class="p-2.5 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition" title="Meus Pedidos">
+            <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+          </button>
+
+          <!-- Cart Button -->
+          <button onclick="openCartDrawer()" class="relative flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-lg shadow-brand-600/20 active:scale-95">
+            <i class="fa-solid fa-basket-shopping"></i>
+            <span class="hidden sm:inline">Carrinho</span>
+            <span id="cart-badge" class="bg-white text-brand-700 text-xs w-5 h-5 rounded-full flex items-center justify-center font-black">0</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- MERCHANT NAVBAR -->
+  <!-- ========================================================================= -->
+  <header id="merchant-header" class="hidden bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-brand-600 flex items-center justify-center text-white">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <span class="font-extrabold text-base tracking-tight text-white block leading-none">Painel do Lojista</span>
+            <span class="text-[10px] text-gray-400 font-medium">Conectado ao Supabase</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span id="merchant-email-badge" class="hidden md:inline-block text-xs font-semibold bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">
+            admin@restaurante.com
+          </span>
+          <button onclick="handleMerchantLogout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Sair do Painel</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 1. PUBLIC CUSTOMER VIEW -->
+  <!-- ========================================================================= -->
+  <main id="view-customer" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    
+    <!-- Hero Banner / Store Info -->
+    <div id="store-banner" class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-brand-dark text-white p-6 md:p-8 shadow-xl">
+      <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-15"></div>
+      
+      <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div class="space-y-2">
+          <div class="flex items-center gap-3 flex-wrap">
+            <span id="store-status-badge" class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              Loja Aberta
+            </span>
+            <span class="text-xs text-gray-300 flex items-center gap-1 bg-white/10 backdrop-blur px-3 py-1 rounded-full">
+              <i class="fa-solid fa-clock text-brand-500"></i>
+              <span id="store-time-display">30-45 min</span>
+            </span>
+            <span class="text-xs text-gray-300 flex items-center gap-1 bg-white/10 backdrop-blur px-3 py-1 rounded-full">
+              <i class="fa-solid fa-motorcycle text-brand-500"></i>
+              Taxa: R$ <span id="store-fee-display">5,00</span>
+            </span>
+          </div>
+          
+          <h1 id="store-name-display" class="text-3xl md:text-4xl font-extrabold tracking-tight">
+            SaborExpress Delivery
+          </h1>
+          <p class="text-gray-300 text-sm max-w-2xl leading-relaxed">
+            Hambúrgueres artesanais, pizzas crocantes e sobremesas deliciosas preparadas com ingredientes selecionados.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Filters Section -->
+    <div class="space-y-4">
+      <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div class="relative w-full md:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <input type="text" id="input-search" oninput="renderProducts()" placeholder="Buscar hambúrguer, pizza, bebida..." class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition shadow-sm">
+        </div>
+
+        <div class="text-xs text-gray-500 font-medium flex items-center gap-2 self-end md:self-center">
+          <i class="fa-solid fa-database text-emerald-500 text-sm"></i>
+          <span>Integração em tempo real com Supabase</span>
+        </div>
+      </div>
+
+      <!-- Categories Pills -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar" id="category-pills">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 id="current-category-title" class="text-xl font-bold text-gray-900">Cardápio Completo</h2>
+        <span id="product-count-label" class="text-xs font-semibold text-gray-400">0 itens encontrados</span>
+      </div>
+
+      <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <!-- Dynamic Product Cards -->
+      </div>
+
+      <div id="no-products-msg" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+        <i class="fa-solid fa-utensils text-4xl text-gray-300 mb-3"></i>
+        <p class="text-gray-500 font-medium">Nenhum produto encontrado para o termo pesquisado.</p>
+        <button onclick="resetSearch()" class="mt-3 text-sm text-brand-600 font-bold hover:underline">Limpar busca</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 2. MERCHANT EXCLUSIVE ADMIN VIEW -->
+  <!-- ========================================================================= -->
+  <main id="view-merchant" class="hidden flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+    
+    <!-- Admin Controls Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+      <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-brand-600"></i> Visão Geral & Operação
+        </h1>
+        <p class="text-gray-500 text-sm">Acompanhe vendas, gerencie pedidos ativos e controle o cardápio da loja no Supabase.</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openAdminProductModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition shadow-md flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i>
+          <span>Novo Produto</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Faturamento Total</p>
+          <h3 id="kpi-revenue" class="text-2xl font-extrabold text-gray-900 mt-1">R$ 0,00</h3>
+          <span class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+            <i class="fa-solid fa-arrow-trend-up"></i> Vendas confirmadas
+          </span>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+          <i class="fa-solid fa-dollar-sign"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Pedidos</p>
+          <h3 id="kpi-orders-count" class="text-2xl font-extrabold text-gray-900 mt-1">0</h3>
+          <span id="kpi-pending-label" class="text-[11px] text-amber-600 font-semibold mt-1 block">0 em andamento</span>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+          <i class="fa-solid fa-bag-shopping"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Ticket Médio</p>
+          <h3 id="kpi-ticket" class="text-2xl font-extrabold text-gray-900 mt-1">R$ 0,00</h3>
+          <span class="text-[11px] text-gray-400 font-medium mt-1 block">Média por pedido</span>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl font-bold">
+          <i class="fa-solid fa-calculator"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Mais Vendido</p>
+          <h3 id="kpi-top-product" class="text-base font-bold text-gray-900 mt-1 truncate max-w-[150px]">-</h3>
+          <span id="kpi-top-count" class="text-[11px] text-brand-600 font-medium mt-1 block">0 itens</span>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Tabs Navigation -->
+    <div class="flex border-b border-gray-200 overflow-x-auto custom-scrollbar gap-2">
+      <button onclick="switchAdminTab('orders')" id="tab-btn-orders" class="admin-tab-btn py-3 px-4 font-bold text-sm text-brand-600 border-b-2 border-brand-600 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-list-check"></i> Pedidos em Tempo Real
+      </button>
+      <button onclick="switchAdminTab('products')" id="tab-btn-products" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-burger"></i> Gestão do Cardápio
+      </button>
+      <button onclick="switchAdminTab('coupons')" id="tab-btn-coupons" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-ticket"></i> Cupons de Desconto
+      </button>
+      <button onclick="switchAdminTab('settings')" id="tab-btn-settings" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-gear"></i> Configurações da Loja
+      </button>
+      <button onclick="switchAdminTab('customers')" id="tab-btn-customers" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-users"></i> Clientes
+      </button>
+    </div>
+
+    <!-- TAB 1: Realtime Orders -->
+    <div id="admin-tab-orders" class="admin-tab-content space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900">Gerenciador de Pedidos</h2>
+        <select id="admin-order-filter" onchange="renderAdminOrders()" class="bg-white border border-gray-200 text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <option value="ALL">Todos os Status</option>
+          <option value="RECEBIDO">Recebidos</option>
+          <option value="PREPARANDO">Em Preparo</option>
+          <option value="ENVIADO">Em Trânsito / Saiu</option>
+          <option value="ENTREGUE">Entregues</option>
+          <option value="CANCELADO">Cancelados</option>
+        </select>
+      </div>
+
+      <div id="admin-orders-list" class="space-y-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- TAB 2: Products Catalog CRUD -->
+    <div id="admin-tab-products" class="admin-tab-content hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900">Produtos do Cardápio</h2>
+        <span id="admin-product-count" class="text-xs text-gray-500">0 produtos cadastrados</span>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-4">Produto</th>
+                <th class="px-6 py-4">Categoria</th>
+                <th class="px-6 py-4">Preço Base</th>
+                <th class="px-6 py-4">Estoque</th>
+                <th class="px-6 py-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-products-table-body" class="divide-y divide-gray-100">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Coupons -->
+    <div id="admin-tab-coupons" class="admin-tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+          <h3 class="font-bold text-gray-900 flex items-center gap-2">
+            <i class="fa-solid fa-plus-circle text-brand-600"></i> Novo Cupom
+          </h3>
+          <form id="form-coupon" onsubmit="handleSaveCoupon(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Código do Cupom</label>
+              <input type="text" id="coupon-code" required placeholder="EX: PRIMEIRA10" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl uppercase font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Tipo</label>
+              <select id="coupon-type" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="PERCENT">Porcentagem (%)</option>
+                <option value="FIXED">Valor Fixo (R$)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Valor</label>
+              <input type="number" id="coupon-value" step="0.01" required placeholder="10" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Pedido Mínimo (R$)</label>
+              <input type="number" id="coupon-min" step="0.01" value="0" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+              Cadastrar Cupom
+            </button>
+          </form>
+        </div>
+
+        <div class="md:col-span-2 space-y-3">
+          <h3 class="font-bold text-gray-900">Cupons Ativos</h3>
+          <div id="admin-coupons-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Store Settings -->
+    <div id="admin-tab-settings" class="admin-tab-content hidden max-w-2xl bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+      <h3 class="font-bold text-gray-900 text-lg border-b border-gray-100 pb-3">Configurações Gerais & Segurança</h3>
+      
+      <form id="form-settings" onsubmit="handleSaveSettings(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nome do Estabelecimento</label>
+          <input type="text" id="setting-store-name" required class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Status de Funcionamento</label>
+            <select id="setting-store-status" class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="OPEN">Loja Aberta (Aceitando Pedidos)</option>
+              <option value="CLOSED">Loja Fechada</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Tempo Médio de Entrega</label>
+            <input type="text" id="setting-delivery-time" placeholder="30-45 min" required class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Taxa de Entrega Padrão (R$)</label>
+            <input type="number" id="setting-delivery-fee" step="0.5" required class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Chave PIX da Loja</label>
+            <input type="text" id="setting-pix-key" required placeholder="CNPJ, E-mail ou Telefone" class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4 space-y-3">
+          <h4 class="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Alterar Senha de Acesso do Lojista</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">E-mail de Login</label>
+              <input type="email" id="setting-admin-email" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Nova Senha</label>
+              <input type="password" id="setting-admin-pass" placeholder="Manter atual" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md">
+          Salvar Alterações
+        </button>
+      </form>
+    </div>
+
+    <!-- TAB 5: Customers -->
+    <div id="admin-tab-customers" class="admin-tab-content hidden space-y-4">
+      <h3 class="font-bold text-gray-900">Base de Clientes</h3>
+      <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-4">Cliente</th>
+                <th class="px-6 py-4">Telefone</th>
+                <th class="px-6 py-4">Endereço</th>
+                <th class="px-6 py-4">Histórico de Pedidos</th>
+              </tr>
+            </thead>
+            <tbody id="admin-customers-table-body" class="divide-y divide-gray-100">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- PUBLIC FOOTER WITH DISCREET MERCHANT ACCESS -->
+  <footer id="public-footer" class="bg-white border-t border-gray-200 mt-auto py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p class="text-xs text-gray-400">© 2026 SaborExpress Delivery. Conectado ao Supabase.</p>
+      
+      <!-- Hidden/Discrete portal trigger for merchant -->
+      <button onclick="openMerchantLoginModal()" class="text-xs text-gray-400 hover:text-gray-600 transition flex items-center gap-1">
+        <i class="fa-solid fa-lock text-[10px]"></i>
+        <span>Acesso Restrito do Lojista</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS & DRAWERS -->
+  <!-- ========================================================================= -->
+
+  <!-- 1. MERCHANT LOGIN MODAL -->
+  <div id="modal-merchant-login" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8 space-y-6 relative animate-in fade-in zoom-in duration-200">
+      
+      <button onclick="closeMerchantLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 bg-brand-50 text-brand-600 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold">
+          <i class="fa-solid fa-shop"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-gray-900">Portal do Lojista</h3>
+        <p class="text-xs text-gray-500">Acesso exclusivo para gestão do estabelecimento.</p>
+      </div>
+
+      <form id="form-merchant-login" onsubmit="handleMerchantLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">E-mail Corporativo</label>
+          <input type="email" id="login-email" required placeholder="admin@restaurante.com" class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Senha de Acesso</label>
+          <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <div id="login-error-msg" class="hidden text-xs text-red-600 font-bold text-center bg-red-50 p-2.5 rounded-xl border border-red-100">
+          Credenciais incorretas! Tente novamente.
+        </div>
+
+        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-lg shadow-brand-600/20">
+          Entrar no Painel Restrito
+        </button>
+      </form>
+
+      <div class="bg-gray-50 p-3 rounded-xl text-[11px] text-gray-500 text-center border border-gray-100">
+        <strong>Credenciais Padrão:</strong><br>
+        E-mail: <code class="text-brand-600 font-bold">admin@restaurante.com</code><br>
+        Senha: <code class="text-brand-600 font-bold">senha123</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. PRODUCT CUSTOMIZER MODAL -->
+  <div id="modal-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <div class="relative h-48 bg-gray-100">
+        <img id="modal-prod-img" src="" alt="Produto" class="w-full h-full object-cover">
+        <button onclick="closeProductModal()" class="absolute top-4 right-4 w-9 h-9 bg-white/80 hover:bg-white text-gray-700 rounded-full flex items-center justify-center shadow transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-grow space-y-5">
+        <div>
+          <div class="flex items-start justify-between gap-2">
+            <h3 id="modal-prod-title" class="text-xl font-bold text-gray-900">Nome do Produto</h3>
+            <span id="modal-prod-price" class="text-lg font-extrabold text-brand-600">R$ 0,00</span>
+          </div>
+          <p id="modal-prod-desc" class="text-sm text-gray-500 mt-1">Descrição detalhada.</p>
+        </div>
+
+        <div class="space-y-3 border-t border-gray-100 pt-4">
+          <h4 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider">Adicionais & Opcionais</h4>
+          <div id="modal-prod-additionals" class="space-y-2">
+            <!-- Dynamic checkboxes -->
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4">
+          <label class="block text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-2">Observações</label>
+          <textarea id="modal-prod-obs" rows="2" placeholder="Ex: Sem salada, molho à parte..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none resize-none"></textarea>
+        </div>
+      </div>
+
+      <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
+        <div class="flex items-center bg-white border border-gray-200 rounded-xl p-1">
+          <button onclick="updateModalQty(-1)" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 font-bold">-</button>
+          <span id="modal-prod-qty" class="w-10 text-center font-bold text-sm">1</span>
+          <button onclick="updateModalQty(1)" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-700 font-bold">+</button>
+        </div>
+
+        <button onclick="addCurrentProductToCart()" class="flex-grow bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-md shadow-brand-600/20 flex items-center justify-between">
+          <span>Adicionar</span>
+          <span id="modal-prod-total-btn">R$ 0,00</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. SHOPPING CART DRAWER -->
+  <div id="drawer-cart" class="fixed inset-0 z-50 hidden">
+    <div onclick="closeCartDrawer()" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
+      
+      <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-basket-shopping text-brand-600 text-xl"></i>
+          <h2 class="font-extrabold text-gray-900 text-lg">Seu Carrinho</h2>
+        </div>
+        <button onclick="closeCartDrawer()" class="w-8 h-8 text-gray-400 hover:text-gray-700 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="cart-items-container" class="flex-grow p-5 overflow-y-auto custom-scrollbar space-y-4">
+        <!-- Cart Items Dynamic -->
+      </div>
+
+      <div class="p-5 border-t border-gray-100 bg-gray-50 space-y-4">
+        <div class="flex gap-2">
+          <input type="text" id="cart-coupon-input" placeholder="Cupom (ex: PRIMEIRA10)" class="flex-grow px-3 py-2 text-xs border border-gray-200 rounded-xl uppercase font-bold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          <button onclick="applyCartCoupon()" class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded-xl transition">Aplicar</button>
+        </div>
+
+        <div id="coupon-applied-msg" class="hidden text-xs text-emerald-600 font-semibold flex items-center justify-between">
+          <span>Cupom aplicado!</span>
+          <button onclick="removeCoupon()" class="text-red-500 hover:underline text-[10px]">Remover</button>
+        </div>
+
+        <div class="space-y-1.5 text-sm border-t border-gray-200 pt-3">
+          <div class="flex justify-between text-gray-500 text-xs">
+            <span>Subtotal</span>
+            <span id="cart-subtotal-display">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between text-gray-500 text-xs">
+            <span>Taxa de Entrega</span>
+            <span id="cart-delivery-display">R$ 0,00</span>
+          </div>
+          <div id="cart-discount-row" class="hidden flex justify-between text-emerald-600 text-xs font-semibold">
+            <span>Desconto</span>
+            <span id="cart-discount-display">- R$ 0,00</span>
+          </div>
+          <div class="flex justify-between font-extrabold text-base text-gray-900 pt-2 border-t border-gray-200">
+            <span>Total</span>
+            <span id="cart-total-display" class="text-brand-600">R$ 0,00</span>
+          </div>
+        </div>
+
+        <button onclick="openCheckoutModal()" id="btn-proceed-checkout" class="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md shadow-brand-600/20 flex items-center justify-center gap-2">
+          <span>Finalizar Pedido</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. CHECKOUT MODAL -->
+  <div id="modal-checkout" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-extrabold text-lg flex items-center gap-2">
+          <i class="fa-solid fa-truck-fast text-brand-500"></i> Finalizar Compra
+        </h3>
+        <button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <form id="form-checkout" onsubmit="handleConfirmOrder(event)" class="p-6 overflow-y-auto custom-scrollbar flex-grow space-y-4">
+        
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tipo de Pedido</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-2 p-2.5 border border-brand-500 bg-brand-50 rounded-xl cursor-pointer text-xs font-bold text-brand-700">
+              <input type="radio" name="orderType" value="DELIVERY" checked onchange="toggleOrderType(this.value)" class="text-brand-600 focus:ring-brand-500">
+              <i class="fa-solid fa-motorcycle"></i> Entrega
+            </label>
+            <label class="flex items-center justify-center gap-2 p-2.5 border border-gray-200 rounded-xl cursor-pointer text-xs font-bold text-gray-700 hover:bg-gray-50">
+              <input type="radio" name="orderType" value="TAKEOUT" onchange="toggleOrderType(this.value)" class="text-brand-600 focus:ring-brand-500">
+              <i class="fa-solid fa-store"></i> Retirar no Local
+            </label>
+          </div>
+        </div>
+
+        <div class="space-y-3 border-t border-gray-100 pt-3">
+          <h4 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider">Identificação do Cliente</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
+              <input type="text" id="chk-name" required placeholder="João Silva" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">WhatsApp / Telefone</label>
+              <input type="tel" id="chk-phone" required placeholder="(17) 99999-9999" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div id="address-fields" class="space-y-3 border-t border-gray-100 pt-3">
+          <h4 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider">Endereço de Entrega</h4>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Rua / Avenida</label>
+              <input type="text" id="chk-street" placeholder="Rua Principal" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Número</label>
+              <input type="text" id="chk-number" placeholder="100" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Bairro</label>
+              <input type="text" id="chk-neighborhood" placeholder="Centro" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Complemento</label>
+              <input type="text" id="chk-complement" placeholder="Apt / Bloco" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3 border-t border-gray-100 pt-3">
+          <h4 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider">Forma de Pagamento</h4>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="flex flex-col items-center justify-center p-2.5 border border-gray-200 rounded-xl cursor-pointer text-xs font-bold text-gray-700 hover:bg-gray-50 text-center">
+              <input type="radio" name="paymentMethod" value="PIX" checked onchange="togglePaymentMethod(this.value)" class="mb-1 text-brand-600 focus:ring-brand-500">
+              <i class="fa-solid fa-qrcode text-emerald-600 mb-1"></i> PIX
+            </label>
+            <label class="flex flex-col items-center justify-center p-2.5 border border-gray-200 rounded-xl cursor-pointer text-xs font-bold text-gray-700 hover:bg-gray-50 text-center">
+              <input type="radio" name="paymentMethod" value="CARD" onchange="togglePaymentMethod(this.value)" class="mb-1 text-brand-600 focus:ring-brand-500">
+              <i class="fa-solid fa-credit-card text-blue-600 mb-1"></i> Cartão
+            </label>
+            <label class="flex flex-col items-center justify-center p-2.5 border border-gray-200 rounded-xl cursor-pointer text-xs font-bold text-gray-700 hover:bg-gray-50 text-center">
+              <input type="radio" name="paymentMethod" value="CASH" onchange="togglePaymentMethod(this.value)" class="mb-1 text-brand-600 focus:ring-brand-500">
+              <i class="fa-solid fa-money-bill-wave text-amber-600 mb-1"></i> Dinheiro
+            </label>
+          </div>
+
+          <div id="cash-change-box" class="hidden mt-2 bg-amber-50 p-3 rounded-xl border border-amber-200">
+            <label class="block text-xs font-bold text-amber-800 mb-1">Precisa de troco para quanto?</label>
+            <input type="number" id="chk-cash-change" placeholder="Ex: 50,00" class="w-full px-3 py-1.5 text-sm border border-amber-300 rounded-lg focus:outline-none">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl text-base transition shadow-lg shadow-emerald-600/20">
+          Confirmar e Enviar Pedido
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. REALTIME TRACKING MODAL FOR CUSTOMER -->
+  <div id="modal-track" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+        <div>
+          <span class="text-xs text-brand-400 font-bold uppercase tracking-wider block">Status do Pedido</span>
+          <h3 id="track-order-id" class="font-extrabold text-lg">#0000</h3>
+        </div>
+        <button onclick="closeTrackModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-grow space-y-6">
+        
+        <div class="space-y-4">
+          <div class="flex items-center justify-between text-center relative">
+            <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-gray-200 -z-0"></div>
+            <div id="track-line-progress" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-brand-600 transition-all duration-500 -z-0" style="width: 0%;"></div>
+
+            <div id="step-1" class="relative z-10 flex flex-col items-center gap-1">
+              <div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold shadow">1</div>
+              <span class="text-[10px] font-bold text-gray-700">Recebido</span>
+            </div>
+            <div id="step-2" class="relative z-10 flex flex-col items-center gap-1">
+              <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow">2</div>
+              <span class="text-[10px] font-bold text-gray-400">Preparo</span>
+            </div>
+            <div id="step-3" class="relative z-10 flex flex-col items-center gap-1">
+              <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow">3</div>
+              <span class="text-[10px] font-bold text-gray-400">Entrega</span>
+            </div>
+            <div id="step-4" class="relative z-10 flex flex-col items-center gap-1">
+              <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow">4</div>
+              <span class="text-[10px] font-bold text-gray-400">Entregue</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="track-pix-box" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center space-y-3">
+          <div class="flex items-center justify-center gap-2 text-emerald-800 font-bold text-sm">
+            <i class="fa-solid fa-qrcode text-lg"></i> Pagamento PIX Pendente
+          </div>
+          <div class="w-32 h-32 mx-auto bg-white p-2 rounded-xl border border-emerald-200 flex items-center justify-center">
+            <div class="w-full h-full bg-slate-900 rounded flex items-center justify-center text-white text-[10px] font-mono p-1 text-center">
+              [QR-CODE PIX SIMULADO]
+            </div>
+          </div>
+          <p class="text-xs text-gray-600">Chave PIX: <strong id="track-pix-key" class="text-gray-900 select-all"></strong></p>
+        </div>
+
+        <div class="bg-gray-50 rounded-2xl p-4 space-y-3 border border-gray-100">
+          <h4 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider">Itens do Pedido</h4>
+          <div id="track-items-list" class="space-y-2 text-xs text-gray-600 border-b border-gray-200 pb-3"></div>
+          <div class="flex justify-between font-extrabold text-sm text-gray-900">
+            <span>Total Valor</span>
+            <span id="track-total-amount" class="text-brand-600">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div class="text-xs text-gray-600 space-y-1">
+          <p class="font-bold text-gray-800">Endereço de Entrega:</p>
+          <p id="track-address-text">-</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. HISTORY MODAL FOR CUSTOMER -->
+  <div id="modal-history" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-extrabold text-lg flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Histórico de Pedidos
+        </h3>
+        <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div id="history-list-container" class="p-5 overflow-y-auto custom-scrollbar flex-grow space-y-4">
+        <!-- Dynamic history -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. ADMIN CREATE/EDIT PRODUCT MODAL -->
+  <div id="modal-admin-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      
+      <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 id="modal-admin-prod-title" class="font-extrabold text-lg">Novo Produto</h3>
+        <button onclick="closeAdminProductModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <form id="form-admin-product" onsubmit="handleSaveProduct(event)" class="p-6 overflow-y-auto custom-scrollbar flex-grow space-y-4">
+        <input type="hidden" id="prod-id">
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nome do Produto</label>
+          <input type="text" id="prod-name" required placeholder="Ex: Burger Bacon" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoria</label>
+            <select id="prod-category" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="lanches">Lanches</option>
+              <option value="pizzas">Pizzas</option>
+              <option value="bebidas">Bebidas</option>
+              <option value="sobremesas">Sobremesas</option>
+              <option value="combos">Combos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Preço (R$)</label>
+            <input type="number" id="prod-price" step="0.01" required placeholder="29.90" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">URL da Imagem</label>
+          <input type="url" id="prod-image" required placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Descrição</label>
+          <textarea id="prod-desc" rows="2" required placeholder="Ingredientes..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-4 border-t border-gray-100 pt-3">
+          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-700">
+            <input type="checkbox" id="prod-featured" class="rounded text-brand-600 focus:ring-brand-500">
+            Produto em Destaque
+          </label>
+        </div>
+
+        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
+          Salvar Produto
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ========================================================================= -->
+  <!-- SUPABASE INTEGRATED JAVASCRIPT LOGIC -->
+  <!-- ========================================================================= -->
+  <script>
+    // Suas credenciais do Supabase
+    const SUPABASE_URL = 'https://bnvtpjpkxqqmtcfmnkfs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudnRwanBreHFxbXRjZm1ua2ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDMyOTMsImV4cCI6MjEwNjI3OTI5M30.qb9I9xxUXX0iScZb3cjSjzso_JyF0nkQWx8IsQG5jTg';
+
+    // Inicialização do SDK do Supabase
+    const _supabase = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    // Dados Padrão de Fallback (caso o banco Supabase esteja em inicialização)
+    const DEFAULT_PRODUCTS = [
+      {
+        id: 'p1',
+        name: 'Smash Bacon Double',
+        category: 'lanches',
+        price: 32.90,
+        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
+        description: 'Dois hambúrgueres artesanais de 100g, queijo cheddar fatiado, tiras de bacon crocante e molho especial.',
+        featured: true,
+        available: true,
+        additionals: [
+          { name: 'Bacon Extra', price: 5.00 },
+          { name: 'Queijo Cheddar Extra', price: 4.00 }
+        ]
+      },
+      {
+        id: 'p2',
+        name: 'Pizza Pepperoni Suprema',
+        category: 'pizzas',
+        price: 54.90,
+        image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=600&q=80',
+        description: 'Molho de tomate italiano, muçarela especial, generosa camada de pepperoni artesanal e orégano.',
+        featured: true,
+        available: true,
+        additionals: [
+          { name: 'Borda Recheada de Catupiry', price: 8.00 }
+        ]
+      },
+      {
+        id: 'p3',
+        name: 'Combo Casal Smash',
+        category: 'combos',
+        price: 69.90,
+        image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80',
+        description: '2 Hambúrgueres Clássicos + 1 Batata Frita Grande + 2 Refrigerantes Lata 350ml.',
+        featured: true,
+        available: true,
+        additionals: []
+      },
+      {
+        id: 'p4',
+        name: 'Coca-Cola Zero 2 Litros',
+        category: 'bebidas',
+        price: 12.00,
+        image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80',
+        description: 'Garrafa de 2 Litros gelada.',
+        featured: false,
+        available: true,
+        additionals: []
+      }
+    ];
+
+    const DEFAULT_SETTINGS = {
+      storeName: 'SaborExpress Delivery',
+      isOpen: true,
+      deliveryFee: 5.00,
+      deliveryTime: '30-45 min',
+      pixKey: 'contato@saborexpress.com',
+      adminEmail: 'admin@restaurante.com',
+      adminPass: 'senha123'
+    };
+
+    const DEFAULT_COUPONS = [
+      { code: 'PRIMEIRA10', type: 'PERCENT', value: 10, minOrder: 30 },
+      { code: 'DELIVERY5', type: 'FIXED', value: 5, minOrder: 20 }
+    ];
+
+    // Estado Geral da Aplicação
+    let state = {
+      products: [],
+      orders: [],
+      settings: {},
+      coupons: [],
+      cart: [],
+      activeCoupon: null,
+      currentCategory: 'ALL',
+      activeModalProduct: null,
+      modalQty: 1,
+      isMerchantAuthenticated: false
+    };
+
+    // Inicialização e Carregamento Assíncrono com Supabase
+    async function initData() {
+      // 1. Carregar Estado de Sessão Local
+      state.isMerchantAuthenticated = localStorage.getItem('sb_merchant_session') === 'true';
+
+      // 2. Carregar do Supabase ou Fallback para LocalStorage
+      try {
+        if (_supabase) {
+          // Buscar Produtos do Supabase
+          const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
+          if (!prodErr && dbProducts && dbProducts.length > 0) {
+            state.products = dbProducts.map(p => ({
+              id: p.id,
+              name: p.name,
+              category: p.category_id || 'lanches',
+              price: parseFloat(p.price),
+              image: p.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
+              description: p.description || '',
+              featured: true,
+              available: p.is_available,
+              additionals: []
+            }));
+          } else {
+            state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
+          }
+
+          // Buscar Pedidos do Supabase
+          const { data: dbOrders, error: ordErr } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+          if (!ordErr && dbOrders) {
+            state.orders = dbOrders.map(o => ({
+              id: o.order_number ? `#${o.order_number}` : o.id.substring(0, 8),
+              createdAt: o.created_at,
+              customerName: o.customer_name,
+              customerPhone: o.customer_phone,
+              address: o.delivery_address || 'Retirada',
+              orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
+              paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
+              cashChange: o.change_for,
+              items: [],
+              subtotal: parseFloat(o.subtotal || 0),
+              deliveryFee: parseFloat(o.delivery_fee || 0),
+              discount: parseFloat(o.discount_amount || 0),
+              total: parseFloat(o.total || 0),
+              status: (o.status || 'recebido').toUpperCase()
+            }));
+          } else {
+            state.orders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+          }
+
+          // Configurações e Cupons
+          state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
+          state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
+
+        } else {
+          // Modos de Fallback caso SDK falhe
+          state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
+          state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
+          state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
+          state.orders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+        }
+      } catch (e) {
+        console.warn('Usando armazenamento local de contingência:', e);
+        state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
+        state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
+        state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
+        state.orders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+      }
+
+      checkSessionAndRoute();
+    }
+
+    function saveDataLocally(key) {
+      if (key === 'products') localStorage.setItem('sb_products', JSON.stringify(state.products));
+      if (key === 'settings') localStorage.setItem('sb_settings', JSON.stringify(state.settings));
+      if (key === 'coupons') localStorage.setItem('sb_coupons', JSON.stringify(state.coupons));
+      if (key === 'orders') localStorage.setItem('sb_orders', JSON.stringify(state.orders));
+    }
+
+    function checkSessionAndRoute() {
+      const viewCustomer = document.getElementById('view-customer');
+      const viewMerchant = document.getElementById('view-merchant');
+      const publicHeader = document.getElementById('public-header');
+      const merchantHeader = document.getElementById('merchant-header');
+      const publicFooter = document.getElementById('public-footer');
+
+      if (state.isMerchantAuthenticated) {
+        viewCustomer.classList.add('hidden');
+        publicFooter.classList.add('hidden');
+        publicHeader.classList.add('hidden');
+
+        viewMerchant.classList.remove('hidden');
+        merchantHeader.classList.remove('hidden');
+
+        document.getElementById('merchant-email-badge').innerText = state.settings.adminEmail;
+
+        renderAdminDashboard();
+        renderAdminOrders();
+      } else {
+        viewMerchant.classList.add('hidden');
+        merchantHeader.classList.add('hidden');
+
+        viewCustomer.classList.remove('hidden');
+        publicHeader.classList.remove('hidden');
+        publicFooter.classList.remove('hidden');
+
+        renderClientBanner();
+        renderProducts();
+      }
+    }
+
+    // Atalho de Teclado (Ctrl + Shift + A) para o Lojista
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        openMerchantLoginModal();
+      }
+    });
+
+    function openMerchantLoginModal() {
+      document.getElementById('login-error-msg').classList.add('hidden');
+      document.getElementById('form-merchant-login').reset();
+      document.getElementById('modal-merchant-login').classList.remove('hidden');
+      document.getElementById('modal-merchant-login').classList.add('flex');
+    }
+
+    function closeMerchantLoginModal() {
+      document.getElementById('modal-merchant-login').classList.add('hidden');
+      document.getElementById('modal-merchant-login').classList.remove('flex');
+    }
+
+    function handleMerchantLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-password').value;
+
+      if (email === state.settings.adminEmail && pass === state.settings.adminPass) {
+        state.isMerchantAuthenticated = true;
+        localStorage.setItem('sb_merchant_session', 'true');
+        closeMerchantLoginModal();
+        showToast('Login de Lojista efetuado!', 'success');
+        checkSessionAndRoute();
+      } else {
+        document.getElementById('login-error-msg').classList.remove('hidden');
+      }
+    }
+
+    function handleMerchantLogout() {
+      state.isMerchantAuthenticated = false;
+      localStorage.removeItem('sb_merchant_session');
+      showToast('Sessão do lojista encerrada.', 'info');
+      checkSessionAndRoute();
+    }
+
+    function resetCustomerView() {
+      state.currentCategory = 'ALL';
+      document.getElementById('input-search').value = '';
+      renderProducts();
+    }
+
+    // Renderização do Cliente
+    function renderClientBanner() {
+      document.getElementById('nav-store-name').innerHTML = `${state.settings.storeName.split(' ')[0]} <span class="text-brand-600">${state.settings.storeName.split(' ').slice(1).join(' ')}</span>`;
+      document.getElementById('store-name-display').innerText = state.settings.storeName;
+      document.getElementById('store-time-display').innerText = state.settings.deliveryTime;
+      document.getElementById('store-fee-display').innerText = parseFloat(state.settings.deliveryFee).toFixed(2).replace('.', ',');
+
+      const statusBadge = document.getElementById('store-status-badge');
+      if (state.settings.isOpen) {
+        statusBadge.className = "px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5";
+        statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Loja Aberta`;
+      } else {
+        statusBadge.className = "px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5";
+        statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Loja Fechada`;
+      }
+
+      const activeOrder = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO');
+      const trackBtn = document.getElementById('btn-active-track');
+      if (activeOrder) {
+        trackBtn.classList.remove('hidden');
+      } else {
+        trackBtn.classList.add('hidden');
+      }
+    }
+
+    function renderCategories() {
+      const categories = [
+        { id: 'ALL', name: 'Todos', icon: 'fa-border-all' },
+        { id: 'lanches', name: 'Lanches', icon: 'fa-burger' },
+        { id: 'pizzas', name: 'Pizzas', icon: 'fa-pizza-slice' },
+        { id: 'combos', name: 'Combos', icon: 'fa-utensils' },
+        { id: 'bebidas', name: 'Bebidas', icon: 'fa-wine-glass' },
+        { id: 'sobremesas', name: 'Sobremesas', icon: 'fa-ice-cream' }
+      ];
+
+      const container = document.getElementById('category-pills');
+      container.innerHTML = categories.map(cat => {
+        const isActive = state.currentCategory === cat.id;
+        return `
+          <button onclick="setCategory('${cat.id}')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            isActive 
+              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20' 
+              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+          }">
+            <i class="fa-solid ${cat.icon}"></i>
+            <span>${cat.name}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function setCategory(catId) {
+      state.currentCategory = catId;
+      renderCategories();
+      renderProducts();
+    }
+
+    function renderProducts() {
+      renderCategories();
+      const query = document.getElementById('input-search').value.toLowerCase().trim();
+      
+      let filtered = state.products.filter(p => {
+        const matchesCategory = state.currentCategory === 'ALL' || p.category === state.currentCategory;
+        const matchesSearch = p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query));
+        return matchesCategory && matchesSearch;
+      });
+
+      const grid = document.getElementById('products-grid');
+      const noMsg = document.getElementById('no-products-msg');
+      document.getElementById('product-count-label').innerText = `${filtered.length} itens encontrados`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        noMsg.classList.remove('hidden');
+        return;
+      }
+      noMsg.classList.add('hidden');
+
+      grid.innerHTML = filtered.map(product => `
+        <div class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group">
+          <div>
+            <div class="relative h-44 overflow-hidden bg-gray-100">
+              <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              ${product.featured ? `<span class="absolute top-3 left-3 bg-amber-500 text-slate-900 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow uppercase">Destaque</span>` : ''}
+              ${!product.available ? `<div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center font-bold text-white text-xs">Esgotado</div>` : ''}
+            </div>
+            <div class="p-4 space-y-1.5">
+              <h3 class="font-bold text-gray-900 text-base group-hover:text-brand-600 transition-colors">${product.name}</h3>
+              <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed">${product.description || ''}</p>
+            </div>
+          </div>
+
+          <div class="p-4 pt-0 flex items-center justify-between gap-2 mt-2">
+            <div>
+              <span class="text-[10px] font-bold text-gray-400 block uppercase">Preço</span>
+              <span class="text-base font-black text-gray-900">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+            </div>
+            
+            <button onclick="openProductDetailModal('${product.id}')" ${!product.available || !state.settings.isOpen ? 'disabled' : ''} class="bg-brand-50 hover:bg-brand-600 text-brand-600 hover:text-white font-bold p-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 text-xs">
+              <i class="fa-solid fa-plus"></i>
+              <span>Adicionar</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function resetSearch() {
+      document.getElementById('input-search').value = '';
+      state.currentCategory = 'ALL';
+      renderProducts();
+    }
+
+    // Modal de Detalhes do Produto
+    function openProductDetailModal(productId) {
+      const product = state.products.find(p => p.id === productId);
+      if (!product) return;
+
+      state.activeModalProduct = product;
+      state.modalQty = 1;
+
+      document.getElementById('modal-prod-img').src = product.image;
+      document.getElementById('modal-prod-title').innerText = product.name;
+      document.getElementById('modal-prod-desc').innerText = product.description || '';
+      document.getElementById('modal-prod-price').innerText = `R$ ${product.price.toFixed(2).replace('.', ',')}`;
+      document.getElementById('modal-prod-qty').innerText = '1';
+      document.getElementById('modal-prod-obs').value = '';
+
+      const addContainer = document.getElementById('modal-prod-additionals');
+      if (product.additionals && product.additionals.length > 0) {
+        addContainer.innerHTML = product.additionals.map((add, idx) => `
+          <label class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition border border-gray-100">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" data-idx="${idx}" onchange="updateModalTotal()" class="modal-add-checkbox rounded text-brand-600 focus:ring-brand-500 w-4 h-4">
+              <span class="text-xs font-semibold text-gray-800">${add.name}</span>
+            </div>
+            <span class="text-xs font-bold text-gray-600">+ R$ ${add.price.toFixed(2).replace('.', ',')}</span>
+          </label>
+        `).join('');
+      } else {
+        addContainer.innerHTML = `<p class="text-xs text-gray-400 italic">Sem adicionais para este item.</p>`;
+      }
+
+      updateModalTotal();
+      document.getElementById('modal-product').classList.remove('hidden');
+      document.getElementById('modal-product').classList.add('flex');
+    }
+
+    function closeProductModal() {
+      document.getElementById('modal-product').classList.add('hidden');
+      document.getElementById('modal-product').classList.remove('flex');
+    }
+
+    function updateModalQty(delta) {
+      state.modalQty = Math.max(1, state.modalQty + delta);
+      document.getElementById('modal-prod-qty').innerText = state.modalQty;
+      updateModalTotal();
+    }
+
+    function updateModalTotal() {
+      if (!state.activeModalProduct) return;
+
+      let basePrice = state.activeModalProduct.price;
+      let additionalsTotal = 0;
+
+      const checkboxes = document.querySelectorAll('.modal-add-checkbox');
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          const idx = parseInt(cb.getAttribute('data-idx'));
+          additionalsTotal += state.activeModalProduct.additionals[idx].price;
+        }
+      });
+
+      const grandTotal = (basePrice + additionalsTotal) * state.modalQty;
+      document.getElementById('modal-prod-total-btn').innerText = `R$ ${grandTotal.toFixed(2).replace('.', ',')}`;
+    }
+
+    function addCurrentProductToCart() {
+      if (!state.activeModalProduct) return;
+
+      const selectedAdds = [];
+      const checkboxes = document.querySelectorAll('.modal-add-checkbox');
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          const idx = parseInt(cb.getAttribute('data-idx'));
+          selectedAdds.push(state.activeModalProduct.additionals[idx]);
+        }
+      });
+
+      const obs = document.getElementById('modal-prod-obs').value.trim();
+
+      const cartItem = {
+        cartItemId: Date.now().toString(),
+        product: state.activeModalProduct,
+        quantity: state.modalQty,
+        selectedAdditionals: selectedAdds,
+        observations: obs,
+        unitTotal: state.activeModalProduct.price + selectedAdds.reduce((acc, a) => acc + a.price, 0)
+      };
+
+      state.cart.push(cartItem);
+      showToast('Item adicionado ao carrinho!', 'success');
+      closeProductModal();
+      updateCartUI();
+    }
+
+    function openCartDrawer() {
+      document.getElementById('drawer-cart').classList.remove('hidden');
+    }
+
+    function closeCartDrawer() {
+      document.getElementById('drawer-cart').classList.add('hidden');
+    }
+
+    function updateCartUI() {
+      const badge = document.getElementById('cart-badge');
+      const container = document.getElementById('cart-items-container');
+      const checkoutBtn = document.getElementById('btn-proceed-checkout');
+
+      const totalItemsCount = state.cart.reduce((acc, i) => acc + i.quantity, 0);
+      badge.innerText = totalItemsCount;
+
+      if (state.cart.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-gray-400 space-y-3">
+            <i class="fa-solid fa-basket-shopping text-4xl"></i>
+            <p class="text-sm font-medium">Seu carrinho está vazio.</p>
+          </div>
+        `;
+        checkoutBtn.disabled = true;
+      } else {
+        checkoutBtn.disabled = false;
+        container.innerHTML = state.cart.map(item => `
+          <div class="flex gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 relative">
+            <img src="${item.product.image}" class="w-16 h-16 rounded-xl object-cover">
+            <div class="flex-grow space-y-1">
+              <div class="flex justify-between items-start">
+                <h4 class="font-bold text-xs text-gray-900">${item.product.name}</h4>
+                <button onclick="removeCartItem('${item.cartItemId}')" class="text-gray-400 hover:text-red-500 text-xs">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+              
+              ${item.selectedAdditionals.length > 0 ? `
+                <p class="text-[10px] text-gray-500 font-medium">
+                  + ${item.selectedAdditionals.map(a => a.name).join(', ')}
+                </p>
+              ` : ''}
+
+              ${item.observations ? `<p class="text-[10px] text-amber-600 italic">" ${item.observations} "</p>` : ''}
+
+              <div class="flex items-center justify-between pt-1">
+                <span class="font-black text-xs text-brand-600">R$ ${(item.unitTotal * item.quantity).toFixed(2).replace('.', ',')}</span>
+                <div class="flex items-center bg-white border border-gray-200 rounded-lg">
+                  <button onclick="changeCartQty('${item.cartItemId}', -1)" class="px-2 py-0.5 text-xs text-gray-600 font-bold">-</button>
+                  <span class="px-2 text-xs font-bold text-gray-800">${item.quantity}</span>
+                  <button onclick="changeCartQty('${item.cartItemId}', 1)" class="px-2 py-0.5 text-xs text-gray-600 font-bold">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      calculateCartTotals();
+    }
+
+    function changeCartQty(cartItemId, delta) {
+      const item = state.cart.find(i => i.cartItemId === cartItemId);
+      if (!item) return;
+
+      item.quantity += delta;
+      if (item.quantity <= 0) {
+        state.cart = state.cart.filter(i => i.cartItemId !== cartItemId);
+      }
+      updateCartUI();
+    }
+
+    function removeCartItem(cartItemId) {
+      state.cart = state.cart.filter(i => i.cartItemId !== cartItemId);
+      updateCartUI();
+    }
+
+    function calculateCartTotals() {
+      const subtotal = state.cart.reduce((acc, i) => acc + (i.unitTotal * i.quantity), 0);
+      const deliveryFee = state.settings.deliveryFee || 0;
+      
+      let discount = 0;
+      if (state.activeCoupon) {
+        if (state.activeCoupon.type === 'PERCENT') {
+          discount = (subtotal * state.activeCoupon.value) / 100;
+        } else {
+          discount = state.activeCoupon.value;
+        }
+      }
+
+      const total = Math.max(0, subtotal + deliveryFee - discount);
+
+      document.getElementById('cart-subtotal-display').innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById('cart-delivery-display').innerText = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+      
+      const discountRow = document.getElementById('cart-discount-row');
+      if (discount > 0) {
+        discountRow.classList.remove('hidden');
+        document.getElementById('cart-discount-display').innerText = `- R$ ${discount.toFixed(2).replace('.', ',')}`;
+      } else {
+        discountRow.classList.add('hidden');
+      }
+
+      document.getElementById('cart-total-display').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+
+      return { subtotal, deliveryFee, discount, total };
+    }
+
+    function applyCartCoupon() {
+      const code = document.getElementById('cart-coupon-input').value.trim().toUpperCase();
+      if (!code) return;
+
+      const coupon = state.coupons.find(c => c.code === code);
+      const subtotal = state.cart.reduce((acc, i) => acc + (i.unitTotal * i.quantity), 0);
+
+      if (!coupon) {
+        showToast('Cupom inválido!', 'error');
+        return;
+      }
+
+      if (subtotal < coupon.minOrder) {
+        showToast(`Pedido mínimo de R$ ${coupon.minOrder.toFixed(2)}`, 'error');
+        return;
+      }
+
+      state.activeCoupon = coupon;
+      document.getElementById('coupon-applied-msg').classList.remove('hidden');
+      showToast('Cupom aplicado!', 'success');
+      calculateCartTotals();
+    }
+
+    function removeCoupon() {
+      state.activeCoupon = null;
+      document.getElementById('coupon-applied-msg').classList.add('hidden');
+      document.getElementById('cart-coupon-input').value = '';
+      calculateCartTotals();
+    }
+
+    function openCheckoutModal() {
+      if (state.cart.length === 0) return;
+      closeCartDrawer();
+      document.getElementById('modal-checkout').classList.remove('hidden');
+      document.getElementById('modal-checkout').classList.add('flex');
+    }
+
+    function closeCheckoutModal() {
+      document.getElementById('modal-checkout').classList.add('hidden');
+      document.getElementById('modal-checkout').classList.remove('flex');
+    }
+
+    function toggleOrderType(val) {
+      const addressBox = document.getElementById('address-fields');
+      if (val === 'TAKEOUT') {
+        addressBox.classList.add('hidden');
+      } else {
+        addressBox.classList.remove('hidden');
+      }
+    }
+
+    function togglePaymentMethod(val) {
+      const cashBox = document.getElementById('cash-change-box');
+      if (val === 'CASH') {
+        cashBox.classList.remove('hidden');
+      } else {
+        cashBox.classList.add('hidden');
+      }
+    }
+
+    async function handleConfirmOrder(e) {
+      e.preventDefault();
+
+      const orderType = document.querySelector('input[name="orderType"]:checked').value;
+      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+      
+      const customerName = document.getElementById('chk-name').value.trim();
+      const customerPhone = document.getElementById('chk-phone').value.trim();
+
+      let address = 'Retirada no Balcão';
+      if (orderType === 'DELIVERY') {
+        const street = document.getElementById('chk-street').value.trim();
+        const num = document.getElementById('chk-number').value.trim();
+        const neigh = document.getElementById('chk-neighborhood').value.trim();
+        const comp = document.getElementById('chk-complement').value.trim();
+        address = `${street}, Nº ${num} - ${neigh} ${comp ? '(' + comp + ')' : ''}`;
+      }
+
+      const totals = calculateCartTotals();
+
+      const newOrder = {
+        id: '#' + Math.floor(1000 + Math.random() * 9000),
+        createdAt: new Date().toISOString(),
+        customerName,
+        customerPhone,
+        address,
+        orderType,
+        paymentMethod,
+        cashChange: paymentMethod === 'CASH' ? document.getElementById('chk-cash-change').value : null,
+        items: [...state.cart],
+        subtotal: totals.subtotal,
+        deliveryFee: orderType === 'DELIVERY' ? totals.deliveryFee : 0,
+        discount: totals.discount,
+        total: orderType === 'DELIVERY' ? totals.total : (totals.subtotal - totals.discount),
+        status: 'RECEBIDO'
+      };
+
+      // Tentar Salvar no Supabase
+      if (_supabase) {
+        try {
+          const { data, error } = await _supabase.from('orders').insert([{
+            customer_name: customerName,
+            customer_phone: customerPhone,
+            delivery_type: orderType.toLowerCase(),
+            delivery_address: address,
+            subtotal: totals.subtotal,
+            delivery_fee: orderType === 'DELIVERY' ? totals.deliveryFee : 0,
+            discount_amount: totals.discount,
+            total: newOrder.total,
+            payment_method: paymentMethod.toLowerCase(),
+            status: 'recebido'
+          }]).select();
+
+          if (!error && data && data.length > 0) {
+            newOrder.id = `#${data[0].order_number || data[0].id.substring(0, 5)}`;
+          }
+        } catch (err) {
+          console.warn('Erro ao salvar no Supabase, salvando localmente:', err);
+        }
+      }
+
+      state.orders.unshift(newOrder);
+      saveDataLocally('orders');
+
+      state.cart = [];
+      state.activeCoupon = null;
+      updateCartUI();
+
+      closeCheckoutModal();
+      showToast('Pedido realizado com sucesso!', 'success');
+      
+      renderClientBanner();
+      openTrackModal(newOrder.id);
+    }
+
+    function openTrackModal(orderId) {
+      let order = null;
+      if (orderId) {
+        order = state.orders.find(o => o.id === orderId);
+      } else {
+        order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
+      }
+
+      if (!order) {
+        showToast('Nenhum pedido recente.', 'info');
+        return;
+      }
+
+      document.getElementById('track-order-id').innerText = order.id;
+      document.getElementById('track-total-amount').innerText = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
+      document.getElementById('track-address-text').innerText = order.address;
+
+      const lineProgress = document.getElementById('track-line-progress');
+      const steps = [
+        document.getElementById('step-1'),
+        document.getElementById('step-2'),
+        document.getElementById('step-3'),
+        document.getElementById('step-4')
+      ];
+
+      steps.forEach(step => {
+        step.children[0].className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow";
+        step.children[1].className = "text-[10px] font-bold text-gray-400";
+      });
+
+      let progressWidth = '0%';
+      let activeIndex = 0;
+
+      if (order.status === 'RECEBIDO') activeIndex = 0;
+      else if (order.status === 'PREPARANDO') { progressWidth = '33%'; activeIndex = 1; }
+      else if (order.status === 'ENVIADO') { progressWidth = '66%'; activeIndex = 2; }
+      else if (order.status === 'ENTREGUE') { progressWidth = '100%'; activeIndex = 3; }
+
+      lineProgress.style.width = progressWidth;
+
+      for (let i = 0; i <= activeIndex; i++) {
+        steps[i].children[0].className = "w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold shadow ring-4 ring-brand-100";
+        steps[i].children[1].className = "text-[10px] font-extrabold text-brand-600";
+      }
+
+      const pixBox = document.getElementById('track-pix-box');
+      if (order.paymentMethod === 'PIX' && order.status === 'RECEBIDO') {
+        pixBox.classList.remove('hidden');
+        document.getElementById('track-pix-key').innerText = state.settings.pixKey;
+      } else {
+        pixBox.classList.add('hidden');
+      }
+
+      const itemsList = document.getElementById('track-items-list');
+      itemsList.innerHTML = order.items.map(item => `
+        <div class="flex justify-between">
+          <span>${item.quantity}x ${item.product.name}</span>
+          <span>R$ ${(item.unitTotal * item.quantity).toFixed(2).replace('.', ',')}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('modal-track').classList.remove('hidden');
+      document.getElementById('modal-track').classList.add('flex');
+    }
+
+    function closeTrackModal() {
+      document.getElementById('modal-track').classList.add('hidden');
+      document.getElementById('modal-track').classList.remove('flex');
+    }
+
+    function openHistoryModal() {
+      renderOrderHistory();
+      document.getElementById('modal-history').classList.remove('hidden');
+      document.getElementById('modal-history').classList.add('flex');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('modal-history').classList.add('hidden');
+      document.getElementById('modal-history').classList.remove('flex');
+    }
+
+    function renderOrderHistory() {
+      const container = document.getElementById('history-list-container');
+      if (state.orders.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400 text-center py-8">Você ainda não realizou pedidos.</p>`;
+        return;
+      }
+
+      container.innerHTML = state.orders.map(order => `
+        <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+          <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+            <div>
+              <span class="font-black text-sm text-gray-900">${order.id}</span>
+              <span class="text-[10px] text-gray-400 block">${new Date(order.createdAt).toLocaleString('pt-BR')}</span>
+            </div>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadgeColor(order.status)}">
+              ${order.status}
+            </span>
+          </div>
+
+          <div class="space-y-1 text-xs text-gray-600">
+            ${order.items.map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+            <span class="font-extrabold text-sm text-brand-600">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+            <button onclick="reorderItems('${order.id}')" class="bg-gray-900 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+              <i class="fa-solid fa-rotate-right"></i> Pedir Novamente
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function getStatusBadgeColor(status) {
+      if (status === 'RECEBIDO') return 'bg-blue-100 text-blue-700';
+      if (status === 'PREPARANDO') return 'bg-amber-100 text-amber-700';
+      if (status === 'ENVIADO') return 'bg-purple-100 text-purple-700';
+      if (status === 'ENTREGUE') return 'bg-emerald-100 text-emerald-700';
+      return 'bg-gray-100 text-gray-700';
+    }
+
+    function reorderItems(orderId) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      state.cart = [...order.items];
+      updateCartUI();
+      closeHistoryModal();
+      openCartDrawer();
+      showToast('Itens adicionados ao carrinho!', 'success');
+    }
+
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+        btn.classList.remove('text-brand-600', 'border-brand-600');
+        btn.classList.add('text-gray-500', 'border-transparent');
+      });
+
+      const selectedTab = document.getElementById(`admin-tab-${tabName}`);
+      const selectedBtn = document.getElementById(`tab-btn-${tabName}`);
+
+      if (selectedTab && selectedBtn) {
+        selectedTab.classList.remove('hidden');
+        selectedBtn.classList.remove('text-gray-500', 'border-transparent');
+        selectedBtn.classList.add('text-brand-600', 'border-brand-600');
+      }
+
+      if (tabName === 'products') renderAdminProductsTable();
+      if (tabName === 'coupons') renderAdminCoupons();
+      if (tabName === 'settings') loadSettingsForm();
+      if (tabName === 'customers') renderAdminCustomers();
+    }
+
+    function renderAdminDashboard() {
+      const totalRevenue = state.orders.reduce((acc, o) => acc + (o.status !== 'CANCELADO' ? o.total : 0), 0);
+      const ordersCount = state.orders.length;
+      const pendingCount = state.orders.filter(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO').length;
+      const ticket = ordersCount > 0 ? totalRevenue / ordersCount : 0;
+
+      document.getElementById('kpi-revenue').innerText = `R$ ${totalRevenue.toFixed(2).replace('.', ',')}`;
+      document.getElementById('kpi-orders-count').innerText = ordersCount;
+      document.getElementById('kpi-pending-label').innerText = `${pendingCount} em andamento`;
+      document.getElementById('kpi-ticket').innerText = `R$ ${ticket.toFixed(2).replace('.', ',')}`;
+    }
+
+    function renderAdminOrders() {
+      const filter = document.getElementById('admin-order-filter').value;
+      let filtered = state.orders;
+
+      if (filter !== 'ALL') {
+        filtered = state.orders.filter(o => o.status === filter);
+      }
+
+      const list = document.getElementById('admin-orders-list');
+      if (filtered.length === 0) {
+        list.innerHTML = `<p class="text-xs text-gray-400 text-center py-8 bg-white rounded-2xl border border-gray-200">Nenhum pedido encontrado.</p>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(order => `
+        <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div class="flex items-center gap-3">
+              <span class="font-extrabold text-base text-gray-900">${order.id}</span>
+              <span class="text-xs text-gray-400">${new Date(order.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadgeColor(order.status)}">${order.status}</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-bold text-gray-500 uppercase">Status:</label>
+              <select onchange="updateOrderStatus('${order.id}', this.value)" class="text-xs font-bold bg-gray-100 border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-brand-500">
+                <option value="RECEBIDO" ${order.status === 'RECEBIDO' ? 'selected' : ''}>Recebido</option>
+                <option value="PREPARANDO" ${order.status === 'PREPARANDO' ? 'selected' : ''}>Em Preparo</option>
+                <option value="ENVIADO" ${order.status === 'ENVIADO' ? 'selected' : ''}>Saiu p/ Entrega</option>
+                <option value="ENTREGUE" ${order.status === 'ENTREGUE' ? 'selected' : ''}>Entregue</option>
+                <option value="CANCELADO" ${order.status === 'CANCELADO' ? 'selected' : ''}>Cancelado</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="space-y-1">
+              <p class="font-bold text-gray-800"><i class="fa-solid fa-user text-brand-600"></i> ${order.customerName} (${order.customerPhone})</p>
+              <p class="text-gray-600"><i class="fa-solid fa-location-dot text-brand-600"></i> ${order.address}</p>
+              <p class="text-gray-600"><i class="fa-solid fa-wallet text-brand-600"></i> Pagamento: <strong>${order.paymentMethod}</strong> ${order.cashChange ? '(Troco p/ R$ '+order.cashChange+')' : ''}</p>
+            </div>
+
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1">
+              <p class="font-bold text-gray-700 uppercase text-[10px] tracking-wider mb-1">Resumo do Pedido</p>
+              <div class="flex justify-between font-black text-gray-900 border-t border-gray-200 pt-1 text-sm">
+                <span>Total</span>
+                <span class="text-brand-600">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      order.status = newStatus;
+      saveDataLocally('orders');
+
+      if (_supabase && orderId.startsWith('#')) {
+        const num = parseInt(orderId.replace('#', ''));
+        if (!isNaN(num)) {
+          await _supabase.from('orders').update({ status: newStatus.toLowerCase() }).eq('order_number', num);
+        }
+      }
+
+      renderAdminDashboard();
+      renderAdminOrders();
+      showToast(`Pedido ${orderId} atualizado para ${newStatus}`, 'info');
+    }
+
+    function renderAdminProductsTable() {
+      const body = document.getElementById('admin-products-table-body');
+      document.getElementById('admin-product-count').innerText = `${state.products.length} produtos cadastrados`;
+
+      body.innerHTML = state.products.map(p => `
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-6 py-4 flex items-center gap-3">
+            <img src="${p.image}" class="w-10 h-10 rounded-xl object-cover">
+            <div>
+              <span class="font-bold text-gray-900 block text-xs sm:text-sm">${p.name}</span>
+              ${p.featured ? `<span class="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded">Destaque</span>` : ''}
+            </div>
+          </td>
+          <td class="px-6 py-4 text-xs font-semibold text-gray-600 uppercase">${p.category}</td>
+          <td class="px-6 py-4 text-xs font-black text-gray-900">R$ ${p.price.toFixed(2).replace('.', ',')}</td>
+          <td class="px-6 py-4">
+            <button onclick="toggleProductAvailability('${p.id}')" class="px-3 py-1 rounded-full text-xs font-bold transition ${p.available ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+              ${p.available ? 'Em Estoque' : 'Esgotado'}
+            </button>
+          </td>
+          <td class="px-6 py-4 text-right space-x-2">
+            <button onclick="editProduct('${p.id}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button onclick="deleteProduct('${p.id}')" class="text-red-600 hover:text-red-800 font-bold text-xs"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function toggleProductAvailability(productId) {
+      const p = state.products.find(x => x.id === productId);
+      if (!p) return;
+      p.available = !p.available;
+      saveDataLocally('products');
+      renderAdminProductsTable();
+    }
+
+    function openAdminProductModal() {
+      document.getElementById('prod-id').value = '';
+      document.getElementById('form-admin-product').reset();
+      document.getElementById('modal-admin-prod-title').innerText = 'Novo Produto';
+      document.getElementById('modal-admin-product').classList.remove('hidden');
+      document.getElementById('modal-admin-product').classList.add('flex');
+    }
+
+    function closeAdminProductModal() {
+      document.getElementById('modal-admin-product').classList.add('hidden');
+      document.getElementById('modal-admin-product').classList.remove('flex');
+    }
+
+    function editProduct(productId) {
+      const p = state.products.find(x => x.id === productId);
+      if (!p) return;
+
+      document.getElementById('prod-id').value = p.id;
+      document.getElementById('prod-name').value = p.name;
+      document.getElementById('prod-category').value = p.category;
+      document.getElementById('prod-price').value = p.price;
+      document.getElementById('prod-image').value = p.image;
+      document.getElementById('prod-desc').value = p.description || '';
+      document.getElementById('prod-featured').checked = !!p.featured;
+
+      document.getElementById('modal-admin-prod-title').innerText = 'Editar Produto';
+      document.getElementById('modal-admin-product').classList.remove('hidden');
+      document.getElementById('modal-admin-product').classList.add('flex');
+    }
+
+    async function handleSaveProduct(e) {
+      e.preventDefault();
+
+      const id = document.getElementById('prod-id').value;
+      const name = document.getElementById('prod-name').value.trim();
+      const category = document.getElementById('prod-category').value;
+      const price = parseFloat(document.getElementById('prod-price').value);
+      const image = document.getElementById('prod-image').value.trim();
+      const description = document.getElementById('prod-desc').value.trim();
+      const featured = document.getElementById('prod-featured').checked;
+
+      if (id) {
+        const p = state.products.find(x => x.id === id);
+        if (p) {
+          p.name = name;
+          p.category = category;
+          p.price = price;
+          p.image = image;
+          p.description = description;
+          p.featured = featured;
+        }
+      } else {
+        const newP = {
+          id: 'p' + Date.now(),
+          name,
+          category,
+          price,
+          image,
+          description,
+          featured,
+          available: true,
+          additionals: []
+        };
+        state.products.push(newP);
+      }
+
+      saveDataLocally('products');
+      renderAdminProductsTable();
+      closeAdminProductModal();
+      showToast('Produto salvo com sucesso!', 'success');
+    }
+
+    function deleteProduct(productId) {
+      if (!confirm('Deseja excluir este produto do cardápio?')) return;
+      state.products = state.products.filter(p => p.id !== productId);
+      saveDataLocally('products');
+      renderAdminProductsTable();
+      showToast('Produto removido.', 'info');
+    }
+
+    function renderAdminCoupons() {
+      const container = document.getElementById('admin-coupons-list');
+      if (state.coupons.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400">Nenhum cupom cadastrado.</p>`;
+        return;
+      }
+
+      container.innerHTML = state.coupons.map((c, idx) => `
+        <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="font-extrabold text-sm text-brand-600 block">${c.code}</span>
+            <span class="text-xs text-gray-500 font-semibold">
+              ${c.type === 'PERCENT' ? c.value + '%' : 'R$ ' + c.value.toFixed(2)} de Desconto
+            </span>
+            <span class="text-[10px] text-gray-400 block mt-0.5">Mínimo: R$ ${c.minOrder.toFixed(2)}</span>
+          </div>
+          <button onclick="deleteCoupon(${idx})" class="text-red-500 hover:text-red-700 text-xs font-bold">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function handleSaveCoupon(e) {
+      e.preventDefault();
+      const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+      const type = document.getElementById('coupon-type').value;
+      const value = parseFloat(document.getElementById('coupon-value').value);
+      const minOrder = parseFloat(document.getElementById('coupon-min').value) || 0;
+
+      state.coupons.push({ code, type, value, minOrder });
+      saveDataLocally('coupons');
+      renderAdminCoupons();
+      document.getElementById('form-coupon').reset();
+      showToast('Cupom cadastrado com sucesso!', 'success');
+    }
+
+    function deleteCoupon(index) {
+      state.coupons.splice(index, 1);
+      saveDataLocally('coupons');
+      renderAdminCoupons();
+      showToast('Cupom removido.', 'info');
+    }
+
+    function loadSettingsForm() {
+      document.getElementById('setting-store-name').value = state.settings.storeName;
+      document.getElementById('setting-store-status').value = state.settings.isOpen ? 'OPEN' : 'CLOSED';
+      document.getElementById('setting-delivery-time').value = state.settings.deliveryTime;
+      document.getElementById('setting-delivery-fee').value = state.settings.deliveryFee;
+      document.getElementById('setting-pix-key').value = state.settings.pixKey;
+      document.getElementById('setting-admin-email').value = state.settings.adminEmail;
+    }
+
+    function handleSaveSettings(e) {
+      e.preventDefault();
+      state.settings.storeName = document.getElementById('setting-store-name').value.trim();
+      state.settings.isOpen = document.getElementById('setting-store-status').value === 'OPEN';
+      state.settings.deliveryTime = document.getElementById('setting-delivery-time').value.trim();
+      state.settings.deliveryFee = parseFloat(document.getElementById('setting-delivery-fee').value);
+      state.settings.pixKey = document.getElementById('setting-pix-key').value.trim();
+      state.settings.adminEmail = document.getElementById('setting-admin-email').value.trim();
+
+      const newPass = document.getElementById('setting-admin-pass').value.trim();
+      if (newPass) {
+        state.settings.adminPass = newPass;
+        document.getElementById('setting-admin-pass').value = '';
+      }
+
+      saveDataLocally('settings');
+      showToast('Configurações salvas!', 'success');
+    }
+
+    function renderAdminCustomers() {
+      const body = document.getElementById('admin-customers-table-body');
+      
+      const customersMap = {};
+      state.orders.forEach(o => {
+        if (!customersMap[o.customerPhone]) {
+          customersMap[o.customerPhone] = {
+            name: o.customerName,
+            phone: o.customerPhone,
+            address: o.address,
+            ordersCount: 0
+          };
+        }
+        customersMap[o.customerPhone].ordersCount++;
+      });
+
+      const customers = Object.values(customersMap);
+
+      if (customers.length === 0) {
+        body.innerHTML = `<tr><td colspan="4" class="px-6 py-6 text-center text-xs text-gray-400">Nenhum cliente cadastrado até o momento.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = customers.map(c => `
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-6 py-4 font-bold text-gray-900">${c.name}</td>
+          <td class="px-6 py-4 text-gray-600">${c.phone}</td>
+          <td class="px-6 py-4 text-gray-500 text-xs">${c.address}</td>
+          <td class="px-6 py-4 font-bold text-brand-600">${c.ordersCount} pedidos</td>
+        </tr>
+      `).join('');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let bg = 'bg-slate-900 text-white';
+      if (type === 'success') bg = 'bg-emerald-600 text-white';
+      if (type === 'error') bg = 'bg-red-600 text-white';
+
+      toast.className = `${bg} px-4 py-3 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `
+        <i class="fa-solid fa-circle-info"></i>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    window.onload = function() {
+      initData();
+      updateCartUI();
+    };
+  </script>
+</body>
+</html>
