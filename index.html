@@ -379,8 +379,8 @@
 
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Ícone (FontAwesome)</label>
-              <input type="text" id="category-icon" required placeholder="fa-burger, fa-pizza-slice, fa-beer" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
-              <span class="text-[10px] text-gray-400">Ex: fa-burger, fa-pizza-slice, fa-utensils, fa-ice-cream, fa-mug-hot</span>
+              <input type="text" id="category-icon" required placeholder="fa-burger, fa-pizza-slice, fa-cake-candles" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <span class="text-[10px] text-gray-400">Ex: fa-burger, fa-pizza-slice, fa-utensils, fa-ice-cream, fa-cake-candles</span>
             </div>
 
             <div class="flex items-center gap-2 pt-2">
@@ -573,7 +573,7 @@
   <div id="modal-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <div class="relative h-48 bg-gray-100">
-        <img id="modal-prod-img" src="" alt="Produto" class="w-full h-full object-cover">
+        <img id="modal-prod-img" src="" alt="Produto" referrerpolicy="no-referrer" class="w-full h-full object-cover">
         <button onclick="closeProductModal()" class="absolute top-4 right-4 w-9 h-9 bg-white/80 hover:bg-white text-gray-700 rounded-full flex items-center justify-center shadow transition">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
@@ -859,7 +859,7 @@
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoria</label>
             <select id="prod-category" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
-              <!-- Injetado dinamicamente -->
+              <!-- Dynamically populated -->
             </select>
           </div>
           <div>
@@ -892,97 +892,89 @@
     </div>
   </div>
 
-  <!-- Custom Confirmation Dialog (Replaces native confirm/alert) -->
-  <div id="modal-confirm-dialog" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4">
-      <div class="w-12 h-12 bg-red-50 text-red-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
+  <!-- 8. CUSTOM CONFIRMATION MODAL -->
+  <div id="modal-confirm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4">
+      <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center text-xl font-bold">
         <i class="fa-solid fa-triangle-exclamation"></i>
       </div>
-      <div>
-        <h4 id="confirm-dialog-title" class="font-bold text-base text-gray-900">Confirmar Ação</h4>
-        <p id="confirm-dialog-msg" class="text-xs text-gray-500 mt-1">Tem certeza que deseja prosseguir?</p>
+      <div class="text-center space-y-1">
+        <h3 id="modal-confirm-title" class="font-extrabold text-base text-gray-900">Confirmação</h3>
+        <p id="modal-confirm-message" class="text-xs text-gray-500">Tem certeza que deseja executar esta ação?</p>
       </div>
-      <div class="flex items-center gap-2">
-        <button id="confirm-dialog-cancel" onclick="closeConfirmModal(false)" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition">
+      <div class="flex gap-2 pt-2">
+        <button id="modal-confirm-cancel-btn" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition">
           Cancelar
         </button>
-        <button id="confirm-dialog-ok" onclick="closeConfirmModal(true)" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition">
+        <button id="modal-confirm-ok-btn" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white transition shadow-md">
           Confirmar
         </button>
       </div>
     </div>
   </div>
 
+  <!-- Toast Container -->
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <script>
+    const isCanvas = (function() {
+      try {
+        if (window.self !== window.top) return true;
+        if (window.location && (window.location.hostname.includes('usercontent') || window.location.hostname.includes('canvas'))) return true;
+      } catch (e) {
+        return true;
+      }
+      return false;
+    })();
+
+    // In Canvas iframes, browser security policies restrict raw WebSocket creation.
+    // Intercept native WebSocket creation in Canvas to prevent uncatchable SecurityError.
+    if (isCanvas && typeof window !== 'undefined' && window.WebSocket) {
+      const NativeWebSocket = window.WebSocket;
+      window.WebSocket = function(url, protocols) {
+        const dummySocket = {
+          readyState: 3, // CLOSED
+          url: url,
+          close: function() {},
+          send: function() {},
+          addEventListener: function() {},
+          removeEventListener: function() {},
+          onopen: null,
+          onclose: null,
+          onerror: null,
+          onmessage: null
+        };
+        setTimeout(() => {
+          if (typeof dummySocket.onerror === 'function') dummySocket.onerror(new Event('error'));
+          if (typeof dummySocket.onclose === 'function') dummySocket.onclose({ code: 1006, reason: 'Canvas sandbox', wasClean: false });
+        }, 0);
+        return dummySocket;
+      };
+      window.WebSocket.prototype = NativeWebSocket.prototype;
+      window.WebSocket.CONNECTING = 0;
+      window.WebSocket.OPEN = 1;
+      window.WebSocket.CLOSING = 2;
+      window.WebSocket.CLOSED = 3;
+    }
+
     const SUPABASE_URL = 'https://bnvtpjpkxqqmtcfmnkfs.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudnRwanBreHFxbXRjZm1ua2ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDMyOTMsImV4cCI6MjEwNjI3OTI5M30.qb9I9xxUXX0iScZb3cjSjzso_JyF0nkQWx8IsQG5jTg';
 
-    let _supabase = null;
-    try {
-      if (window.supabase && window.supabase.createClient) {
-        _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession: false }
-        });
-      }
-    } catch (e) {
-      console.warn('Supabase client init note:', e);
-    }
-
-    const DEFAULT_CATEGORIES = [
-      { id: 'c1', slug: 'lanches', name: 'Lanches', icon: 'fa-burger' },
-      { id: 'c2', slug: 'pizzas', name: 'Pizzas', icon: 'fa-pizza-slice' },
-      { id: 'c3', slug: 'combos', name: 'Combos', icon: 'fa-utensils' },
-      { id: 'c4', slug: 'bebidas', name: 'Bebidas', icon: 'fa-wine-glass' },
-      { id: 'c5', slug: 'sobremesas', name: 'Sobremesas', icon: 'fa-ice-cream' }
-    ];
+    const _supabase = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
     const DEFAULT_PRODUCTS = [
-      {
-        id: 'p1',
-        name: 'Smash Bacon Double',
-        category: 'lanches',
-        price: 32.90,
-        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
-        description: 'Dois hambúrgueres artesanais de 100g, queijo cheddar fatiado, tiras de bacon crocante e molho especial.',
-        featured: true,
-        available: true,
-        additionals: [{ name: 'Bacon Extra', price: 5.00 }]
-      },
-      {
-        id: 'p2',
-        name: 'Pizza Pepperoni Suprema',
-        category: 'pizzas',
-        price: 54.90,
-        image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=600&q=80',
-        description: 'Molho de tomate italiano, muçarela especial, generosa camada de pepperoni artesanal e orégano.',
-        featured: true,
-        available: true,
-        additionals: []
-      },
-      {
-        id: 'p3',
-        name: 'Combo Casal Smash',
-        category: 'combos',
-        price: 69.90,
-        image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80',
-        description: '2 Hambúrgueres Clássicos + 1 Batata Frita Grande + 2 Refrigerantes Lata 350ml.',
-        featured: true,
-        available: true,
-        additionals: []
-      },
-      {
-        id: 'p4',
-        name: 'Coca-Cola Zero 2 Litros',
-        category: 'bebidas',
-        price: 12.00,
-        image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80',
-        description: 'Garrafa de 2 Litros gelada.',
-        featured: false,
-        available: true,
-        additionals: []
-      }
+      { id: 'p1', name: 'Smash Bacon Double', category: 'lanches', price: 32.90, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80', description: 'Dois hambúrgueres artesanais de 100g, queijo cheddar fatiado, tiras de bacon crocante e molho especial.', featured: true, available: true, additionals: [{ name: 'Bacon Extra', price: 5.00 }] },
+      { id: 'p2', name: 'Pizza Pepperoni Suprema', category: 'pizzas', price: 54.90, image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=600&q=80', description: 'Molho de tomate italiano, muçarela especial, generosa camada de pepperoni artesanal e orégano.', featured: true, available: true, additionals: [] },
+      { id: 'p3', name: 'Combo Casal Smash', category: 'combos', price: 69.90, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80', description: '2 Hambúrgueres Clássicos + 1 Batata Frita Grande + 2 Refrigerantes Lata 350ml.', featured: true, available: true, additionals: [] },
+      { id: 'p4', name: 'Coca-Cola Zero 2 Litros', category: 'bebidas', price: 12.00, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80', description: 'Garrafa de 2 Litros gelada.', featured: false, available: true, additionals: [] }
+    ];
+
+    const DEFAULT_CATEGORIES = [
+      { id: 'lanches', slug: 'lanches', name: 'Lanches', icon: 'fa-burger' },
+      { id: 'pizzas', slug: 'pizzas', name: 'Pizzas', icon: 'fa-pizza-slice' },
+      { id: 'combos', slug: 'combos', name: 'Combos', icon: 'fa-utensils' },
+      { id: 'bebidas', slug: 'bebidas', name: 'Bebidas', icon: 'fa-wine-glass' },
+      { id: 'sobremesas', slug: 'sobremesas', name: 'Sobremesas', icon: 'fa-ice-cream' }
     ];
 
     const DEFAULT_SETTINGS = {
@@ -1000,8 +992,8 @@
     ];
 
     let state = {
-      categories: [],
       products: [],
+      categories: DEFAULT_CATEGORIES,
       orders: [],
       settings: {},
       coupons: [],
@@ -1013,43 +1005,24 @@
       isMerchantAuthenticated: false
     };
 
-    let confirmCallback = null;
-    function openConfirmModal(title, msg, callback) {
-      document.getElementById('confirm-dialog-title').innerText = title;
-      document.getElementById('confirm-dialog-msg').innerText = msg;
-      confirmCallback = callback;
-      const modal = document.getElementById('modal-confirm-dialog');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
-
-    function closeConfirmModal(result) {
-      const modal = document.getElementById('modal-confirm-dialog');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      if (confirmCallback) {
-        confirmCallback(result);
-        confirmCallback = null;
-      }
-    }
-
-    async function initData(isSilentRefresh = false) {
+    async function initData() {
       state.isMerchantAuthenticated = localStorage.getItem('sb_merchant_session') === 'true';
 
       const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
       const localProducts = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
-      state.categories = JSON.parse(localStorage.getItem('sb_categories')) || DEFAULT_CATEGORIES;
+      const localCategories = JSON.parse(localStorage.getItem('sb_categories')) || DEFAULT_CATEGORIES;
       state.products = localProducts;
+      state.categories = localCategories;
       state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
       state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
 
       if (_supabase) {
         try {
-          // Fetch Categories
+          // 1. Carregar Categorias do Supabase
           const { data: dbCategories, error: catErr } = await _supabase.from('categories').select('*');
           if (!catErr && dbCategories && dbCategories.length > 0) {
             state.categories = dbCategories.map(c => ({
-              id: c.id,
+              id: String(c.id),
               slug: c.slug || c.id,
               name: c.name,
               icon: c.icon || 'fa-utensils'
@@ -1057,31 +1030,28 @@
             saveDataLocally('categories');
           }
 
-          // Fetch Products from Supabase
+          // 2. Carregar Produtos do Supabase
           const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
           if (!prodErr && dbProducts && dbProducts.length > 0) {
             state.products = dbProducts.map(p => ({
               id: String(p.id),
               name: p.name,
-              category: p.category || p.category_id || 'lanches',
+              category: p.category || 'lanches',
               price: parseFloat(p.price || 0),
               image: p.image || p.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
               description: p.description || '',
-              featured: !!(p.featured !== undefined ? p.featured : p.is_featured),
-              available: p.available !== undefined ? p.available : (p.is_available !== undefined ? p.is_available : true),
+              featured: !!p.featured,
+              available: p.available !== false,
               additionals: p.additionals || []
             }));
             saveDataLocally('products');
           } else if (!prodErr && dbProducts && dbProducts.length === 0) {
-            // Se a tabela de produtos estiver vazia no Supabase, envia os padrões com UUIDs reais
-            await seedDefaultProductsToSupabase();
-          } else {
-            state.products = localProducts;
+            await seedDefaultProducts();
           }
 
-          // Fetch Orders
-          const { data: dbOrders, error: ordErr } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
-          if (!ordErr && dbOrders && dbOrders.length > 0) {
+          // 3. Carregar Pedidos do Supabase
+          const { data: dbOrders } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+          if (dbOrders && dbOrders.length > 0) {
             const mappedDb = dbOrders.map(o => {
               const matched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
               return {
@@ -1122,36 +1092,22 @@
         state.orders = localOrders;
       }
 
-      if (!isSilentRefresh) {
-        checkSessionAndRoute();
-        subscribeToRealtimeOrders();
-      } else {
-        if (state.isMerchantAuthenticated) {
-          renderAdminDashboard();
-          renderAdminOrders();
-          renderAdminProductsTable();
-          renderAdminCategories();
-        } else {
-          renderClientBanner();
-          renderProducts();
-        }
-      }
+      populateProductCategorySelect();
+      checkSessionAndRoute();
+      subscribeToRealtimeOrders();
     }
 
-    async function seedDefaultProductsToSupabase() {
+    async function seedDefaultProducts() {
       if (!_supabase) return;
       try {
         const toInsert = DEFAULT_PRODUCTS.map(p => ({
           name: p.name,
           category: p.category,
-          category_id: p.category,
           price: p.price,
           image: p.image,
-          image_url: p.image,
           description: p.description,
           featured: p.featured,
           available: p.available,
-          is_available: p.available,
           additionals: p.additionals || []
         }));
         const { data, error } = await _supabase.from('products').insert(toInsert).select();
@@ -1159,78 +1115,59 @@
           state.products = data.map(p => ({
             id: String(p.id),
             name: p.name,
-            category: p.category || p.category_id || 'lanches',
+            category: p.category,
             price: parseFloat(p.price || 0),
-            image: p.image || p.image_url,
-            description: p.description || '',
-            featured: !!(p.featured !== undefined ? p.featured : p.is_featured),
-            available: p.available !== undefined ? p.available : (p.is_available !== undefined ? p.is_available : true),
+            image: p.image,
+            description: p.description,
+            featured: p.featured,
+            available: p.available,
             additionals: p.additionals || []
           }));
           saveDataLocally('products');
         }
-      } catch (e) {
+      } catch(e) {
         console.warn('Erro ao popular produtos no Supabase:', e);
       }
     }
 
-    let realtimeFallbackPolling = null;
-    function startPollingFallback() {
-      if (realtimeFallbackPolling) return;
-      realtimeFallbackPolling = setInterval(() => {
-        initData(true);
-      }, 4000);
-    }
-
-    function isCanvasEnvironment() {
-      try {
-        // If hosted on GitHub Pages or live domain, allow WebSockets
-        if (window.location.hostname && (window.location.hostname.includes('github.io') || window.location.hostname.includes('.'))) {
-          if (window.self === window.top) return false;
-        }
-        // Sandboxed iframe / Canvas preview environment
-        if (window.self !== window.top) return true;
-        if (window.origin === 'null' || window.location.origin === 'null') return true;
-        if (window.location.protocol === 'about:' || !window.location.host) return true;
-      } catch (e) {
-        return true;
-      }
-      return false;
-    }
-
     function subscribeToRealtimeOrders() {
-      // In Canvas iframe preview, skip WebSockets to avoid SecurityError and use HTTP polling
-      if (!_supabase || isCanvasEnvironment()) {
-        startPollingFallback();
+      if (!_supabase) return;
+
+      // In the Canvas iframe preview, bypass WebSockets and use polling fallback to prevent SecurityError
+      if (isCanvas) {
+        if (!window._canvasPollingInterval) {
+          window._canvasPollingInterval = setInterval(() => {
+            initData();
+          }, 4000);
+        }
         return;
       }
 
       try {
-        const channel = _supabase
-          .channel('public:orders_sync')
+        _supabase
+          .channel('public:sync_all')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-             initData(true);
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-             initData(true);
+             initData();
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-             initData(true);
-          });
-
-        channel.subscribe((status) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            startPollingFallback();
-          }
-        });
-      } catch (err) {
-        startPollingFallback();
+             initData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+             initData();
+          })
+          .subscribe();
+      } catch(e) {
+        if (!window._canvasPollingInterval) {
+          window._canvasPollingInterval = setInterval(() => {
+            initData();
+          }, 4000);
+        }
       }
     }
 
     function saveDataLocally(key) {
-      if (key === 'categories') localStorage.setItem('sb_categories', JSON.stringify(state.categories));
       if (key === 'products') localStorage.setItem('sb_products', JSON.stringify(state.products));
+      if (key === 'categories') localStorage.setItem('sb_categories', JSON.stringify(state.categories));
       if (key === 'settings') localStorage.setItem('sb_settings', JSON.stringify(state.settings));
       if (key === 'coupons') localStorage.setItem('sb_coupons', JSON.stringify(state.coupons));
       if (key === 'orders') localStorage.setItem('sb_orders', JSON.stringify(state.orders));
@@ -1340,7 +1277,7 @@
     function renderCategories() {
       const container = document.getElementById('category-pills');
       const allPill = { id: 'ALL', name: 'Todos', icon: 'fa-border-all', slug: 'ALL' };
-      const categoriesList = [allPill, ...state.categories];
+      const categoriesList = [allPill, ...(state.categories || [])];
 
       container.innerHTML = categoriesList.map(cat => {
         const catSlug = cat.slug || cat.id;
@@ -1387,7 +1324,7 @@
         <div class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group">
           <div>
             <div class="relative h-44 overflow-hidden bg-gray-100">
-              <img src="${product.image}" alt="${product.name}" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=SaborExpress'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              <img src="${product.image}" alt="${product.name}" referrerpolicy="no-referrer" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=SaborExpress'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
               ${product.featured ? `<span class="absolute top-3 left-3 bg-amber-500 text-slate-900 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow uppercase">Destaque</span>` : ''}
               ${!product.available ? `<div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center font-bold text-white text-xs">Esgotado</div>` : ''}
             </div>
@@ -1538,7 +1475,7 @@
         checkoutBtn.disabled = false;
         container.innerHTML = state.cart.map(item => `
           <div class="flex gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 relative">
-            <img src="${item.product.image}" class="w-16 h-16 rounded-xl object-cover">
+            <img src="${item.product.image}" class="w-16 h-16 rounded-xl object-cover" referrerpolicy="no-referrer" onerror="this.src='https://placehold.co/100x100/1e293b/ffffff?text=Item'">
             <div class="flex-grow space-y-1">
               <div class="flex justify-between items-start">
                 <h4 class="font-bold text-xs text-gray-900">${item.product.name}</h4>
@@ -1780,7 +1717,7 @@
       }
 
       const itemsList = document.getElementById('track-items-list');
-      itemsList.innerHTML = order.items.map(item => `
+      itemsList.innerHTML = (order.items || []).map(item => `
         <div class="flex justify-between">
           <span>${item.quantity}x ${item.product.name}</span>
           <span>R$ ${(item.unitTotal * item.quantity).toFixed(2).replace('.', ',')}</span>
@@ -1827,7 +1764,7 @@
           </div>
 
           <div class="space-y-1 text-xs text-gray-600">
-            ${order.items.map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
+            ${(order.items || []).map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-200">
@@ -1968,7 +1905,7 @@
 
     function renderAdminCategories() {
       const container = document.getElementById('admin-categories-list');
-      if (state.categories.length === 0) {
+      if (!state.categories || state.categories.length === 0) {
         container.innerHTML = `<p class="text-xs text-gray-400">Nenhuma categoria cadastrada.</p>`;
         return;
       }
@@ -2001,7 +1938,8 @@
       const catId = document.getElementById('category-id').value;
       const slug = document.getElementById('category-slug').value.trim().toLowerCase().replace(/\s+/g, '-');
       const name = document.getElementById('category-name').value.trim();
-      const icon = document.getElementById('category-icon').value.trim() || 'fa-utensils';
+      let icon = document.getElementById('category-icon').value.trim() || 'fa-utensils';
+      if (!icon.startsWith('fa-')) icon = 'fa-' + icon;
 
       if (catId) {
         const cat = state.categories.find(c => c.id === catId);
@@ -2013,9 +1951,7 @@
         if (_supabase) {
           try {
             await _supabase.from('categories').update({ slug, name, icon }).eq('id', catId);
-          } catch(err) {
-            console.error('Erro ao atualizar categoria no Supabase:', err);
-          }
+          } catch(err) {}
         }
         showToast('Categoria atualizada com sucesso!', 'success');
       } else {
@@ -2028,15 +1964,9 @@
 
         if (_supabase) {
           try {
-            const { data, error } = await _supabase.from('categories').insert([{ slug, name, icon }]).select();
-            if (error) {
-              console.error('Erro ao salvar categoria no Supabase:', error);
-            } else if (data && data.length > 0) {
-              newCat.id = data[0].id;
-            }
-          } catch(err) {
-            console.error('Erro ao inserir categoria:', err);
-          }
+            const { data } = await _supabase.from('categories').insert([{ slug, name, icon }]).select();
+            if (data && data.length > 0) newCat.id = String(data[0].id);
+          } catch(err) {}
         }
 
         state.categories.push(newCat);
@@ -2071,8 +2001,7 @@
     }
 
     function confirmDeleteCategory(catId) {
-      openConfirmModal('Excluir Categoria', 'Deseja realmente remover esta categoria?', async (confirmed) => {
-        if (!confirmed) return;
+      openConfirmModal('Excluir Categoria', 'Deseja realmente remover esta categoria?', async () => {
         state.categories = state.categories.filter(c => c.id !== catId);
         saveDataLocally('categories');
 
@@ -2093,9 +2022,35 @@
       const select = document.getElementById('prod-category');
       if (!select) return;
 
-      select.innerHTML = state.categories.map(cat => `
+      select.innerHTML = (state.categories || []).map(cat => `
         <option value="${cat.slug || cat.id}">${cat.name}</option>
       `).join('');
+    }
+
+    function openConfirmModal(title, message, onConfirm) {
+      document.getElementById('modal-confirm-title').innerText = title;
+      document.getElementById('modal-confirm-message').innerText = message;
+      
+      const modal = document.getElementById('modal-confirm');
+      const okBtn = document.getElementById('modal-confirm-ok-btn');
+      const cancelBtn = document.getElementById('modal-confirm-cancel-btn');
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+
+      okBtn.onclick = () => {
+        cleanup();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+
+      cancelBtn.onclick = cleanup;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
 
     function renderAdminProductsTable() {
@@ -2105,7 +2060,7 @@
       body.innerHTML = state.products.map(p => `
         <tr class="hover:bg-gray-50 transition">
           <td class="px-6 py-4 flex items-center gap-3">
-            <img src="${p.image}" class="w-10 h-10 rounded-xl object-cover">
+            <img src="${p.image}" class="w-10 h-10 rounded-xl object-cover" referrerpolicy="no-referrer" onerror="this.src='https://placehold.co/100x100/1e293b/ffffff?text=Produto'">
             <div>
               <span class="font-bold text-gray-900 block text-xs sm:text-sm">${p.name}</span>
               ${p.featured ? `<span class="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded">Destaque</span>` : ''}
@@ -2131,19 +2086,18 @@
       if (!p) return;
       p.available = !p.available;
       saveDataLocally('products');
-      if (_supabase) {
+      if (_supabase && p.id && p.id.length > 10) {
         try {
-          await _supabase.from('products').update({ available: p.available, is_available: p.available }).eq('id', productId);
+          await _supabase.from('products').update({ available: p.available }).eq('id', p.id);
         } catch(e) {}
       }
       renderAdminProductsTable();
-      renderProducts();
     }
 
     function openAdminProductModal() {
-      populateProductCategorySelect();
       document.getElementById('prod-id').value = '';
       document.getElementById('form-admin-product').reset();
+      populateProductCategorySelect();
       document.getElementById('modal-admin-prod-title').innerText = 'Novo Produto';
       document.getElementById('modal-admin-product').classList.remove('hidden');
       document.getElementById('modal-admin-product').classList.add('flex');
@@ -2155,10 +2109,10 @@
     }
 
     function editProduct(productId) {
-      populateProductCategorySelect();
       const p = state.products.find(x => x.id === productId);
       if (!p) return;
 
+      populateProductCategorySelect();
       document.getElementById('prod-id').value = p.id;
       document.getElementById('prod-name').value = p.name;
       document.getElementById('prod-category').value = p.category;
@@ -2179,21 +2133,24 @@
       const name = document.getElementById('prod-name').value.trim();
       const category = document.getElementById('prod-category').value;
       const price = parseFloat(document.getElementById('prod-price').value);
-      const image = document.getElementById('prod-image').value.trim();
+      
+      let rawImage = document.getElementById('prod-image').value.trim();
+      if (rawImage.includes('](')) {
+        rawImage = rawImage.split('](')[0].replace(/^\[/, '');
+      }
+      const image = rawImage.replace(/^[\[\(]/, '').replace(/[\]\)]$/, '').trim();
+
       const description = document.getElementById('prod-desc').value.trim();
       const featured = document.getElementById('prod-featured').checked;
 
       const pData = {
         name,
         category,
-        category_id: category,
         price,
         image,
-        image_url: image,
         description,
         featured,
-        available: true,
-        is_available: true
+        available: true
       };
 
       if (id) {
@@ -2207,27 +2164,22 @@
           p.featured = featured;
         }
 
-        let updatedInDb = false;
         if (_supabase) {
-          try {
-            const { data, error } = await _supabase.from('products').update(pData).eq('id', id).select();
-            if (!error && data && data.length > 0) {
-              updatedInDb = true;
-            }
-          } catch(err) {
-            console.warn('Erro ao atualizar produto no Supabase:', err);
+          let updatedInDb = false;
+          if (id.length > 10) {
+            try {
+              const { data, error } = await _supabase.from('products').update(pData).eq('id', id).select();
+              if (!error && data && data.length > 0) updatedInDb = true;
+            } catch(err) {}
           }
 
-          // Se falhou ao atualizar (por exemplo, ID inicial como "p1" inexistente no Supabase), insere novo no banco
           if (!updatedInDb) {
             try {
               const { data, error } = await _supabase.from('products').insert([pData]).select();
               if (!error && data && data.length > 0) {
                 if (p) p.id = String(data[0].id);
               }
-            } catch(err) {
-              console.warn('Erro na inserção de fallback:', err);
-            }
+            } catch(err) {}
           }
         }
       } else {
@@ -2242,16 +2194,16 @@
           available: true,
           additionals: []
         };
+
         if (_supabase) {
           try {
             const { data, error } = await _supabase.from('products').insert([pData]).select();
             if (!error && data && data.length > 0) {
               newP.id = String(data[0].id);
             }
-          } catch(err) {
-            console.warn('Erro ao inserir novo produto no Supabase:', err);
-          }
+          } catch(err) {}
         }
+
         state.products.push(newP);
       }
 
@@ -2259,19 +2211,20 @@
       renderAdminProductsTable();
       renderProducts();
       closeAdminProductModal();
-      showToast('Produto salvo com sucesso!', 'success');
+      showToast('Produto salvo e sincronizado na nuvem!', 'success');
     }
 
     function confirmDeleteProduct(productId) {
-      openConfirmModal('Excluir Produto', 'Deseja realmente remover este produto do cardápio?', async (confirmed) => {
-        if (!confirmed) return;
+      openConfirmModal('Excluir Produto', 'Deseja excluir este produto do cardápio?', async () => {
         state.products = state.products.filter(p => p.id !== productId);
         saveDataLocally('products');
-        if (_supabase) {
+
+        if (_supabase && productId.length > 10) {
           try {
             await _supabase.from('products').delete().eq('id', productId);
           } catch(e) {}
         }
+
         renderAdminProductsTable();
         renderProducts();
         showToast('Produto removido.', 'info');
