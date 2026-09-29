@@ -96,18 +96,15 @@
 
         <!-- Customer Utilities -->
         <div class="flex items-center gap-3">
-          <!-- Active Track Button if Order Exists -->
           <button id="btn-active-track" onclick="openTrackModal()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2 pulse-ring">
             <i class="fa-solid fa-motorcycle text-sm"></i>
             <span class="hidden sm:inline">Acompanhar Pedido</span>
           </button>
 
-          <!-- History -->
           <button onclick="openHistoryModal()" class="p-2.5 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition" title="Meus Pedidos">
             <i class="fa-solid fa-clock-rotate-left text-lg"></i>
           </button>
 
-          <!-- Cart Button -->
           <button onclick="openCartDrawer()" class="relative flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-lg shadow-brand-600/20 active:scale-95">
             <i class="fa-solid fa-basket-shopping"></i>
             <span class="hidden sm:inline">Carrinho</span>
@@ -155,7 +152,7 @@
   <!-- ========================================================================= -->
   <main id="view-customer" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     
-    <!-- Hero Banner / Store Info -->
+    <!-- Hero Banner -->
     <div id="store-banner" class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-brand-dark text-white p-6 md:p-8 shadow-xl">
       <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-15"></div>
       
@@ -305,6 +302,9 @@
       <button onclick="switchAdminTab('products')" id="tab-btn-products" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
         <i class="fa-solid fa-burger"></i> Gestão do Cardápio
       </button>
+      <button onclick="switchAdminTab('categories')" id="tab-btn-categories" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-tags"></i> Categorias
+      </button>
       <button onclick="switchAdminTab('coupons')" id="tab-btn-coupons" class="admin-tab-btn py-3 px-4 font-bold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
         <i class="fa-solid fa-ticket"></i> Cupons de Desconto
       </button>
@@ -330,9 +330,7 @@
         </select>
       </div>
 
-      <div id="admin-orders-list" class="space-y-4">
-        <!-- Rendered dynamically -->
-      </div>
+      <div id="admin-orders-list" class="space-y-4"></div>
     </div>
 
     <!-- TAB 2: Products Catalog CRUD -->
@@ -354,15 +352,56 @@
                 <th class="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody id="admin-products-table-body" class="divide-y divide-gray-100">
-              <!-- Injected via JS -->
-            </tbody>
+            <tbody id="admin-products-table-body" class="divide-y divide-gray-100"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- TAB 3: Coupons -->
+    <!-- TAB 3: Categories CRUD -->
+    <div id="admin-tab-categories" class="admin-tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+          <h3 id="category-form-title" class="font-bold text-gray-900 flex items-center gap-2">
+            <i class="fa-solid fa-plus-circle text-brand-600"></i> Nova Categoria
+          </h3>
+          <form id="form-category" onsubmit="handleSaveCategory(event)" class="space-y-3">
+            <input type="hidden" id="category-id">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Identificador (ID / Slug)</label>
+              <input type="text" id="category-slug" required placeholder="ex: lanches, porcoes, bebidas" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nome Exibido</label>
+              <input type="text" id="category-name" required placeholder="Ex: Lanches, Bebidas, Porções" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Ícone (FontAwesome)</label>
+              <input type="text" id="category-icon" required placeholder="fa-burger, fa-pizza-slice, fa-beer" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <span class="text-[10px] text-gray-400">Ex: fa-burger, fa-pizza-slice, fa-utensils, fa-ice-cream, fa-mug-hot</span>
+            </div>
+
+            <div class="flex items-center gap-2 pt-2">
+              <button type="submit" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+                Salvar Categoria
+              </button>
+              <button type="button" onclick="cancelCategoryEdit()" id="btn-cancel-category" class="hidden px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs transition">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="md:col-span-2 space-y-3">
+          <h3 class="font-bold text-gray-900">Categorias Cadastradas</h3>
+          <div id="admin-categories-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Coupons -->
     <div id="admin-tab-coupons" class="admin-tab-content hidden space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-4">
@@ -401,14 +440,12 @@
 
         <div class="md:col-span-2 space-y-3">
           <h3 class="font-bold text-gray-900">Cupons Ativos</h3>
-          <div id="admin-coupons-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <!-- Injected via JS -->
-          </div>
+          <div id="admin-coupons-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
         </div>
       </div>
     </div>
 
-    <!-- TAB 4: Store Settings -->
+    <!-- TAB 5: Store Settings -->
     <div id="admin-tab-settings" class="admin-tab-content hidden max-w-2xl bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
       <h3 class="font-bold text-gray-900 text-lg border-b border-gray-100 pb-3">Configurações Gerais & Segurança</h3>
       
@@ -465,7 +502,7 @@
       </form>
     </div>
 
-    <!-- TAB 5: Customers -->
+    <!-- TAB 6: Customers -->
     <div id="admin-tab-customers" class="admin-tab-content hidden space-y-4">
       <h3 class="font-bold text-gray-900">Base de Clientes</h3>
       <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -479,9 +516,7 @@
                 <th class="px-6 py-4">Histórico de Pedidos</th>
               </tr>
             </thead>
-            <tbody id="admin-customers-table-body" class="divide-y divide-gray-100">
-              <!-- Injected via JS -->
-            </tbody>
+            <tbody id="admin-customers-table-body" class="divide-y divide-gray-100"></tbody>
           </table>
         </div>
       </div>
@@ -489,12 +524,9 @@
 
   </main>
 
-  <!-- PUBLIC FOOTER WITH DISCREET MERCHANT ACCESS -->
   <footer id="public-footer" class="bg-white border-t border-gray-200 mt-auto py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
       <p class="text-xs text-gray-400">© 2026 SaborExpress Delivery. Conectado ao Supabase.</p>
-      
-      <!-- Hidden/Discrete portal trigger for merchant -->
       <button onclick="openMerchantLoginModal()" class="text-xs text-gray-400 hover:text-gray-600 transition flex items-center gap-1">
         <i class="fa-solid fa-lock text-[10px]"></i>
         <span>Acesso Restrito do Lojista</span>
@@ -502,14 +534,9 @@
     </div>
   </footer>
 
-  <!-- ========================================================================= -->
-  <!-- MODALS & DRAWERS -->
-  <!-- ========================================================================= -->
-
   <!-- 1. MERCHANT LOGIN MODAL -->
   <div id="modal-merchant-login" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
-    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8 space-y-6 relative animate-in fade-in zoom-in duration-200">
-      
+    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8 space-y-6 relative">
       <button onclick="closeMerchantLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
 
       <div class="text-center space-y-2">
@@ -539,19 +566,12 @@
           Entrar no Painel Restrito
         </button>
       </form>
-
-      <div class="bg-gray-50 p-3 rounded-xl text-[11px] text-gray-500 text-center border border-gray-100">
-        <strong>Credenciais Padrão:</strong><br>
-        E-mail: <code class="text-brand-600 font-bold">admin@restaurante.com</code><br>
-        Senha: <code class="text-brand-600 font-bold">senha123</code>
-      </div>
     </div>
   </div>
 
   <!-- 2. PRODUCT CUSTOMIZER MODAL -->
   <div id="modal-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-      
       <div class="relative h-48 bg-gray-100">
         <img id="modal-prod-img" src="" alt="Produto" class="w-full h-full object-cover">
         <button onclick="closeProductModal()" class="absolute top-4 right-4 w-9 h-9 bg-white/80 hover:bg-white text-gray-700 rounded-full flex items-center justify-center shadow transition">
@@ -570,9 +590,7 @@
 
         <div class="space-y-3 border-t border-gray-100 pt-4">
           <h4 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider">Adicionais & Opcionais</h4>
-          <div id="modal-prod-additionals" class="space-y-2">
-            <!-- Dynamic checkboxes -->
-          </div>
+          <div id="modal-prod-additionals" class="space-y-2"></div>
         </div>
 
         <div class="border-t border-gray-100 pt-4">
@@ -593,7 +611,6 @@
           <span id="modal-prod-total-btn">R$ 0,00</span>
         </button>
       </div>
-
     </div>
   </div>
 
@@ -601,7 +618,6 @@
   <div id="drawer-cart" class="fixed inset-0 z-50 hidden">
     <div onclick="closeCartDrawer()" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"></div>
     <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
-      
       <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-basket-shopping text-brand-600 text-xl"></i>
@@ -612,9 +628,7 @@
         </button>
       </div>
 
-      <div id="cart-items-container" class="flex-grow p-5 overflow-y-auto custom-scrollbar space-y-4">
-        <!-- Cart Items Dynamic -->
-      </div>
+      <div id="cart-items-container" class="flex-grow p-5 overflow-y-auto custom-scrollbar space-y-4"></div>
 
       <div class="p-5 border-t border-gray-100 bg-gray-50 space-y-4">
         <div class="flex gap-2">
@@ -651,14 +665,12 @@
           <i class="fa-solid fa-arrow-right text-xs"></i>
         </button>
       </div>
-
     </div>
   </div>
 
   <!-- 4. CHECKOUT MODAL -->
   <div id="modal-checkout" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-      
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <h3 class="font-extrabold text-lg flex items-center gap-2">
           <i class="fa-solid fa-truck-fast text-brand-500"></i> Finalizar Compra
@@ -667,7 +679,6 @@
       </div>
 
       <form id="form-checkout" onsubmit="handleConfirmOrder(event)" class="p-6 overflow-y-auto custom-scrollbar flex-grow space-y-4">
-        
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tipo de Pedido</label>
           <div class="grid grid-cols-2 gap-2">
@@ -750,10 +761,9 @@
     </div>
   </div>
 
-  <!-- 5. REALTIME TRACKING MODAL FOR CUSTOMER -->
+  <!-- 5. REALTIME TRACKING MODAL -->
   <div id="modal-track" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-      
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <div>
           <span class="text-xs text-brand-400 font-bold uppercase tracking-wider block">Status do Pedido</span>
@@ -763,7 +773,6 @@
       </div>
 
       <div class="p-6 overflow-y-auto custom-scrollbar flex-grow space-y-6">
-        
         <div class="space-y-4">
           <div class="flex items-center justify-between text-center relative">
             <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-gray-200 -z-0"></div>
@@ -813,32 +822,26 @@
           <p class="font-bold text-gray-800">Endereço de Entrega:</p>
           <p id="track-address-text">-</p>
         </div>
-
       </div>
     </div>
   </div>
 
-  <!-- 6. HISTORY MODAL FOR CUSTOMER -->
+  <!-- 6. HISTORY MODAL -->
   <div id="modal-history" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-      
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <h3 class="font-extrabold text-lg flex items-center gap-2">
           <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Histórico de Pedidos
         </h3>
         <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
       </div>
-
-      <div id="history-list-container" class="p-5 overflow-y-auto custom-scrollbar flex-grow space-y-4">
-        <!-- Dynamic history -->
-      </div>
+      <div id="history-list-container" class="p-5 overflow-y-auto custom-scrollbar flex-grow space-y-4"></div>
     </div>
   </div>
 
   <!-- 7. ADMIN CREATE/EDIT PRODUCT MODAL -->
   <div id="modal-admin-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-      
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <h3 id="modal-admin-prod-title" class="font-extrabold text-lg">Novo Produto</h3>
         <button onclick="closeAdminProductModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
@@ -856,11 +859,7 @@
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Categoria</label>
             <select id="prod-category" required class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
-              <option value="lanches">Lanches</option>
-              <option value="pizzas">Pizzas</option>
-              <option value="bebidas">Bebidas</option>
-              <option value="sobremesas">Sobremesas</option>
-              <option value="combos">Combos</option>
+              <!-- Injetado dinamicamente -->
             </select>
           </div>
           <div>
@@ -893,21 +892,52 @@
     </div>
   </div>
 
-  <!-- Toast Container -->
+  <!-- Custom Confirmation Dialog (Replaces native confirm/alert) -->
+  <div id="modal-confirm-dialog" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4">
+      <div class="w-12 h-12 bg-red-50 text-red-500 rounded-2xl mx-auto flex items-center justify-center text-xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <h4 id="confirm-dialog-title" class="font-bold text-base text-gray-900">Confirmar Ação</h4>
+        <p id="confirm-dialog-msg" class="text-xs text-gray-500 mt-1">Tem certeza que deseja prosseguir?</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="confirm-dialog-cancel" onclick="closeConfirmModal(false)" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition">
+          Cancelar
+        </button>
+        <button id="confirm-dialog-ok" onclick="closeConfirmModal(true)" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- ========================================================================= -->
-  <!-- SUPABASE INTEGRATED JAVASCRIPT LOGIC -->
-  <!-- ========================================================================= -->
   <script>
-    // Suas credenciais do Supabase
     const SUPABASE_URL = 'https://bnvtpjpkxqqmtcfmnkfs.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJudnRwanBreHFxbXRjZm1ua2ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDMyOTMsImV4cCI6MjEwNjI3OTI5M30.qb9I9xxUXX0iScZb3cjSjzso_JyF0nkQWx8IsQG5jTg';
 
-    // Inicialização do SDK do Supabase
-    const _supabase = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+    let _supabase = null;
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: false }
+        });
+      }
+    } catch (e) {
+      console.warn('Supabase client init note:', e);
+    }
 
-    // Dados Padrão de Fallback (caso o banco Supabase esteja em inicialização)
+    const DEFAULT_CATEGORIES = [
+      { id: 'c1', slug: 'lanches', name: 'Lanches', icon: 'fa-burger' },
+      { id: 'c2', slug: 'pizzas', name: 'Pizzas', icon: 'fa-pizza-slice' },
+      { id: 'c3', slug: 'combos', name: 'Combos', icon: 'fa-utensils' },
+      { id: 'c4', slug: 'bebidas', name: 'Bebidas', icon: 'fa-wine-glass' },
+      { id: 'c5', slug: 'sobremesas', name: 'Sobremesas', icon: 'fa-ice-cream' }
+    ];
+
     const DEFAULT_PRODUCTS = [
       {
         id: 'p1',
@@ -918,10 +948,7 @@
         description: 'Dois hambúrgueres artesanais de 100g, queijo cheddar fatiado, tiras de bacon crocante e molho especial.',
         featured: true,
         available: true,
-        additionals: [
-          { name: 'Bacon Extra', price: 5.00 },
-          { name: 'Queijo Cheddar Extra', price: 4.00 }
-        ]
+        additionals: [{ name: 'Bacon Extra', price: 5.00 }]
       },
       {
         id: 'p2',
@@ -932,9 +959,7 @@
         description: 'Molho de tomate italiano, muçarela especial, generosa camada de pepperoni artesanal e orégano.',
         featured: true,
         available: true,
-        additionals: [
-          { name: 'Borda Recheada de Catupiry', price: 8.00 }
-        ]
+        additionals: []
       },
       {
         id: 'p3',
@@ -971,12 +996,11 @@
     };
 
     const DEFAULT_COUPONS = [
-      { code: 'PRIMEIRA10', type: 'PERCENT', value: 10, minOrder: 30 },
-      { code: 'DELIVERY5', type: 'FIXED', value: 5, minOrder: 20 }
+      { code: 'PRIMEIRA10', type: 'PERCENT', value: 10, minOrder: 30 }
     ];
 
-    // Estado Geral da Aplicação
     let state = {
+      categories: [],
       products: [],
       orders: [],
       settings: {},
@@ -989,44 +1013,57 @@
       isMerchantAuthenticated: false
     };
 
-    // Inicialização e Carregamento Assíncrono com Supabase
-    async function initData() {
-      // 1. Carregar Estado de Sessão Local
+    let confirmCallback = null;
+    function openConfirmModal(title, msg, callback) {
+      document.getElementById('confirm-dialog-title').innerText = title;
+      document.getElementById('confirm-dialog-msg').innerText = msg;
+      confirmCallback = callback;
+      const modal = document.getElementById('modal-confirm-dialog');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal(result) {
+      const modal = document.getElementById('modal-confirm-dialog');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      if (confirmCallback) {
+        confirmCallback(result);
+        confirmCallback = null;
+      }
+    }
+
+    async function initData(isSilentRefresh = false) {
       state.isMerchantAuthenticated = localStorage.getItem('sb_merchant_session') === 'true';
 
-      // 2. Carregar do Supabase ou Fallback para LocalStorage
-      try {
-        if (_supabase) {
-          // Buscar Produtos do Supabase
-          const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
-          if (!prodErr && dbProducts && dbProducts.length > 0) {
-            state.products = dbProducts.map(p => ({
-              id: p.id,
-              name: p.name,
-              category: p.category_id || 'lanches',
-              price: parseFloat(p.price),
-              image: p.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
-              description: p.description || '',
-              featured: true,
-              available: p.is_available,
-              additionals: []
+      const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+      state.categories = JSON.parse(localStorage.getItem('sb_categories')) || DEFAULT_CATEGORIES;
+      state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
+      state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
+      state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
+
+      if (_supabase) {
+        try {
+          // Fetch Categories
+          const { data: dbCategories, error: catErr } = await _supabase.from('categories').select('*');
+          if (!catErr && dbCategories && dbCategories.length > 0) {
+            state.categories = dbCategories.map(c => ({
+              id: c.id,
+              slug: c.slug || c.id,
+              name: c.name,
+              icon: c.icon || 'fa-utensils'
             }));
-          } else {
-            state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
+            saveDataLocally('categories');
           }
 
-          // Buscar Pedidos do Supabase
+          // Fetch Orders
           const { data: dbOrders, error: ordErr } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
-          const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
-
-          if (!ordErr && dbOrders) {
-            state.orders = dbOrders.map(o => {
-              // Cruza a database com a memoria local para resgatar os items do carrinho e garantir persistência (F5)
-              const localMatched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
-
+          if (!ordErr && dbOrders && dbOrders.length > 0) {
+            const mappedDb = dbOrders.map(o => {
+              const matched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
               return {
-                id: o.id.substring(0, 6).toUpperCase(), // ID Curto para a tela do Usuário
-                dbId: o.id, // ID real UUID para updates no Supabase
+                id: o.id.substring(0, 6).toUpperCase(),
+                dbId: o.id,
                 createdAt: o.created_at,
                 customerName: o.customer_name,
                 customerPhone: o.customer_phone,
@@ -1034,7 +1071,7 @@
                 orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
                 paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
                 cashChange: o.change_for,
-                items: localMatched ? localMatched.items : [], // Mantém os itens mesmo após reload
+                items: matched ? matched.items : [],
                 subtotal: parseFloat(o.subtotal || 0),
                 deliveryFee: parseFloat(o.delivery_fee || 0),
                 discount: parseFloat(o.discount_amount || 0),
@@ -1042,87 +1079,89 @@
                 status: (o.status || 'recebido').toUpperCase()
               };
             });
+
+            const combinedMap = new Map();
+            mappedDb.forEach(item => combinedMap.set(item.dbId || item.id, item));
+            localOrders.forEach(item => {
+              const key = item.dbId || item.id;
+              if (!combinedMap.has(key)) combinedMap.set(key, item);
+            });
+
+            state.orders = Array.from(combinedMap.values());
             saveDataLocally('orders');
           } else {
             state.orders = localOrders;
           }
-
-          // Configurações e Cupons
-          state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
-          state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
-
-        } else {
-          // Modos de Fallback caso SDK falhe
-          state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
-          state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
-          state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
-          state.orders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+        } catch(e) {
+          state.orders = localOrders;
         }
-      } catch (e) {
-        console.warn('Usando armazenamento local de contingência:', e);
-        state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
-        state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
-        state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
-        state.orders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+      } else {
+        state.orders = localOrders;
       }
 
-      checkSessionAndRoute();
-      subscribeToRealtimeOrders(); // Inicia canal em tempo real
+      if (!isSilentRefresh) {
+        checkSessionAndRoute();
+        subscribeToRealtimeOrders();
+      } else {
+        if (state.isMerchantAuthenticated) {
+          renderAdminDashboard();
+          renderAdminOrders();
+        } else {
+          renderClientBanner();
+        }
+      }
+    }
+
+    let realtimeFallbackPolling = null;
+    function startPollingFallback() {
+      if (realtimeFallbackPolling) return;
+      realtimeFallbackPolling = setInterval(() => {
+        initData(true);
+      }, 4000);
+    }
+
+    function isCanvasEnvironment() {
+      try {
+        // If hosted on GitHub Pages or live domain, allow WebSockets
+        if (window.location.hostname && (window.location.hostname.includes('github.io') || window.location.hostname.includes('.'))) {
+          if (window.self === window.top) return false;
+        }
+        // Sandboxed iframe / Canvas preview environment
+        if (window.self !== window.top) return true;
+        if (window.origin === 'null' || window.location.origin === 'null') return true;
+        if (window.location.protocol === 'about:' || !window.location.host) return true;
+      } catch (e) {
+        return true;
+      }
+      return false;
     }
 
     function subscribeToRealtimeOrders() {
-      if (!_supabase) return;
+      // In Canvas iframe preview, skip WebSockets to avoid SecurityError and use HTTP polling
+      if (!_supabase || isCanvasEnvironment()) {
+        startPollingFallback();
+        return;
+      }
+
       try {
-        _supabase
-          .channel('public:orders')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async (payload) => {
-             // Recarrega os pedidos atualizados da base suavemente
-             const { data: dbOrders, error } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
-             if (!error && dbOrders) {
-               const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
-               state.orders = dbOrders.map(o => {
-                  const localMatched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
-                  return {
-                    id: o.id.substring(0, 6).toUpperCase(),
-                    dbId: o.id,
-                    createdAt: o.created_at,
-                    customerName: o.customer_name,
-                    customerPhone: o.customer_phone,
-                    address: o.delivery_address || 'Retirada',
-                    orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
-                    paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
-                    cashChange: o.change_for,
-                    items: localMatched ? localMatched.items : [],
-                    subtotal: parseFloat(o.subtotal || 0),
-                    deliveryFee: parseFloat(o.delivery_fee || 0),
-                    discount: parseFloat(o.discount_amount || 0),
-                    total: parseFloat(o.total || 0),
-                    status: (o.status || 'recebido').toUpperCase()
-                  };
-               });
-               saveDataLocally('orders');
-               
-               // Atualiza a interface sem F5
-               if (state.isMerchantAuthenticated) {
-                 renderAdminDashboard();
-                 renderAdminOrders();
-               } else {
-                 renderClientBanner();
-                 const trackModal = document.getElementById('modal-track');
-                 if (trackModal && !trackModal.classList.contains('hidden')) {
-                   const orderIdStr = document.getElementById('track-order-id').innerText.replace('#', '');
-                   openTrackModal(orderIdStr);
-                 }
-               }
-             }
-          })
-          .subscribe();
-      } catch (e) {
-        console.warn('Realtime indisponível:', e);
+        const channel = _supabase
+          .channel('public:orders_sync')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+             initData(true);
+          });
+
+        channel.subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            startPollingFallback();
+          }
+        });
+      } catch (err) {
+        startPollingFallback();
       }
     }
 
     function saveDataLocally(key) {
+      if (key === 'categories') localStorage.setItem('sb_categories', JSON.stringify(state.categories));
       if (key === 'products') localStorage.setItem('sb_products', JSON.stringify(state.products));
       if (key === 'settings') localStorage.setItem('sb_settings', JSON.stringify(state.settings));
       if (key === 'coupons') localStorage.setItem('sb_coupons', JSON.stringify(state.coupons));
@@ -1161,7 +1200,6 @@
       }
     }
 
-    // Atalho de Teclado (Ctrl + Shift + A) para o Lojista
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
         e.preventDefault();
@@ -1210,7 +1248,6 @@
       renderProducts();
     }
 
-    // Renderização do Cliente
     function renderClientBanner() {
       document.getElementById('nav-store-name').innerHTML = `${state.settings.storeName.split(' ')[0]} <span class="text-brand-600">${state.settings.storeName.split(' ').slice(1).join(' ')}</span>`;
       document.getElementById('store-name-display').innerText = state.settings.storeName;
@@ -1228,41 +1265,31 @@
 
       const activeOrder = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO');
       const trackBtn = document.getElementById('btn-active-track');
-      if (activeOrder) {
-        trackBtn.classList.remove('hidden');
-      } else {
-        trackBtn.classList.add('hidden');
-      }
+      if (activeOrder) trackBtn.classList.remove('hidden');
+      else trackBtn.classList.add('hidden');
     }
 
     function renderCategories() {
-      const categories = [
-        { id: 'ALL', name: 'Todos', icon: 'fa-border-all' },
-        { id: 'lanches', name: 'Lanches', icon: 'fa-burger' },
-        { id: 'pizzas', name: 'Pizzas', icon: 'fa-pizza-slice' },
-        { id: 'combos', name: 'Combos', icon: 'fa-utensils' },
-        { id: 'bebidas', name: 'Bebidas', icon: 'fa-wine-glass' },
-        { id: 'sobremesas', name: 'Sobremesas', icon: 'fa-ice-cream' }
-      ];
-
       const container = document.getElementById('category-pills');
-      container.innerHTML = categories.map(cat => {
-        const isActive = state.currentCategory === cat.id;
+      const allPill = { id: 'ALL', name: 'Todos', icon: 'fa-border-all', slug: 'ALL' };
+      const categoriesList = [allPill, ...state.categories];
+
+      container.innerHTML = categoriesList.map(cat => {
+        const catSlug = cat.slug || cat.id;
+        const isActive = state.currentCategory === catSlug;
         return `
-          <button onclick="setCategory('${cat.id}')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-            isActive 
-              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20' 
-              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+          <button onclick="setCategory('${catSlug}')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            isActive ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
           }">
-            <i class="fa-solid ${cat.icon}"></i>
+            <i class="fa-solid ${cat.icon || 'fa-tag'}"></i>
             <span>${cat.name}</span>
           </button>
         `;
       }).join('');
     }
 
-    function setCategory(catId) {
-      state.currentCategory = catId;
+    function setCategory(catSlug) {
+      state.currentCategory = catSlug;
       renderCategories();
       renderProducts();
     }
@@ -1323,7 +1350,6 @@
       renderProducts();
     }
 
-    // Modal de Detalhes do Produto
     function openProductDetailModal(productId) {
       const product = state.products.find(p => p.id === productId);
       if (!product) return;
@@ -1453,12 +1479,7 @@
                 </button>
               </div>
               
-              ${item.selectedAdditionals.length > 0 ? `
-                <p class="text-[10px] text-gray-500 font-medium">
-                  + ${item.selectedAdditionals.map(a => a.name).join(', ')}
-                </p>
-              ` : ''}
-
+              ${item.selectedAdditionals.length > 0 ? `<p class="text-[10px] text-gray-500 font-medium">+ ${item.selectedAdditionals.map(a => a.name).join(', ')}</p>` : ''}
               ${item.observations ? `<p class="text-[10px] text-amber-600 italic">" ${item.observations} "</p>` : ''}
 
               <div class="flex items-center justify-between pt-1">
@@ -1499,11 +1520,8 @@
       
       let discount = 0;
       if (state.activeCoupon) {
-        if (state.activeCoupon.type === 'PERCENT') {
-          discount = (subtotal * state.activeCoupon.value) / 100;
-        } else {
-          discount = state.activeCoupon.value;
-        }
+        if (state.activeCoupon.type === 'PERCENT') discount = (subtotal * state.activeCoupon.value) / 100;
+        else discount = state.activeCoupon.value;
       }
 
       const total = Math.max(0, subtotal + deliveryFee - discount);
@@ -1520,7 +1538,6 @@
       }
 
       document.getElementById('cart-total-display').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
-
       return { subtotal, deliveryFee, discount, total };
     }
 
@@ -1531,15 +1548,8 @@
       const coupon = state.coupons.find(c => c.code === code);
       const subtotal = state.cart.reduce((acc, i) => acc + (i.unitTotal * i.quantity), 0);
 
-      if (!coupon) {
-        showToast('Cupom inválido!', 'error');
-        return;
-      }
-
-      if (subtotal < coupon.minOrder) {
-        showToast(`Pedido mínimo de R$ ${coupon.minOrder.toFixed(2)}`, 'error');
-        return;
-      }
+      if (!coupon) return showToast('Cupom inválido!', 'error');
+      if (subtotal < coupon.minOrder) return showToast(`Pedido mínimo de R$ ${coupon.minOrder.toFixed(2)}`, 'error');
 
       state.activeCoupon = coupon;
       document.getElementById('coupon-applied-msg').classList.remove('hidden');
@@ -1568,20 +1578,14 @@
 
     function toggleOrderType(val) {
       const addressBox = document.getElementById('address-fields');
-      if (val === 'TAKEOUT') {
-        addressBox.classList.add('hidden');
-      } else {
-        addressBox.classList.remove('hidden');
-      }
+      if (val === 'TAKEOUT') addressBox.classList.add('hidden');
+      else addressBox.classList.remove('hidden');
     }
 
     function togglePaymentMethod(val) {
       const cashBox = document.getElementById('cash-change-box');
-      if (val === 'CASH') {
-        cashBox.classList.remove('hidden');
-      } else {
-        cashBox.classList.add('hidden');
-      }
+      if (val === 'CASH') cashBox.classList.remove('hidden');
+      else cashBox.classList.add('hidden');
     }
 
     async function handleConfirmOrder(e) {
@@ -1605,7 +1609,7 @@
       const totals = calculateCartTotals();
 
       const newOrder = {
-        id: ('TEMP' + Math.floor(1000 + Math.random() * 9000)), // Temp ID até retornar do banco
+        id: ('P' + Math.floor(1000 + Math.random() * 9000)),
         dbId: null,
         createdAt: new Date().toISOString(),
         customerName,
@@ -1614,7 +1618,7 @@
         orderType,
         paymentMethod,
         cashChange: paymentMethod === 'CASH' ? document.getElementById('chk-cash-change').value : null,
-        items: [...state.cart], // Garante a persistência dos itens localmente
+        items: [...state.cart],
         subtotal: totals.subtotal,
         deliveryFee: orderType === 'DELIVERY' ? totals.deliveryFee : 0,
         discount: totals.discount,
@@ -1622,10 +1626,9 @@
         status: 'RECEBIDO'
       };
 
-      // Tentar Salvar no Supabase
       if (_supabase) {
         try {
-          const { data, error } = await _supabase.from('orders').insert([{
+          const { data } = await _supabase.from('orders').insert([{
             customer_name: customerName,
             customer_phone: customerPhone,
             delivery_type: orderType.toLowerCase(),
@@ -1638,13 +1641,11 @@
             status: 'recebido'
           }]).select();
 
-          if (!error && data && data.length > 0) {
+          if (data && data.length > 0) {
             newOrder.dbId = data[0].id;
             newOrder.id = data[0].id.substring(0, 6).toUpperCase();
           }
-        } catch (err) {
-          console.warn('Salvando localmente devido a falha na rede:', err);
-        }
+        } catch (err) {}
       }
 
       state.orders.unshift(newOrder);
@@ -1658,21 +1659,17 @@
       showToast('Pedido realizado com sucesso!', 'success');
       
       renderClientBanner();
+      renderAdminDashboard();
+      renderAdminOrders();
       openTrackModal(newOrder.id);
     }
 
     function openTrackModal(orderId) {
       let order = null;
-      if (orderId) {
-        order = state.orders.find(o => o.id === orderId);
-      } else {
-        order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
-      }
+      if (orderId) order = state.orders.find(o => o.id === orderId);
+      else order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
 
-      if (!order) {
-        showToast('Nenhum pedido recente.', 'info');
-        return;
-      }
+      if (!order) return showToast('Nenhum pedido recente.', 'info');
 
       document.getElementById('track-order-id').innerText = '#' + order.id;
       document.getElementById('track-total-amount').innerText = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
@@ -1762,7 +1759,7 @@
           </div>
 
           <div class="space-y-1 text-xs text-gray-600">
-            ${order.items.map(i => `<div>${i.quantity}x${i.product.name}</div>`).join('')}
+            ${order.items.map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-200">
@@ -1811,6 +1808,7 @@
       }
 
       if (tabName === 'products') renderAdminProductsTable();
+      if (tabName === 'categories') renderAdminCategories();
       if (tabName === 'coupons') renderAdminCoupons();
       if (tabName === 'settings') loadSettingsForm();
       if (tabName === 'customers') renderAdminCustomers();
@@ -1892,14 +1890,138 @@
       if (_supabase && order.dbId) {
         try {
           await _supabase.from('orders').update({ status: newStatus.toLowerCase() }).eq('id', order.dbId);
-        } catch(e) {
-          console.warn('Erro ao atualizar Supabase:', e);
-        }
+        } catch(e) {}
       }
 
       renderAdminDashboard();
       renderAdminOrders();
       showToast(`Pedido #${order.id} atualizado para ${newStatus}`, 'info');
+    }
+
+    function renderAdminCategories() {
+      const container = document.getElementById('admin-categories-list');
+      if (state.categories.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400">Nenhuma categoria cadastrada.</p>`;
+        return;
+      }
+
+      container.innerHTML = state.categories.map(cat => `
+        <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+              <i class="fa-solid ${cat.icon || 'fa-utensils'}"></i>
+            </div>
+            <div>
+              <span class="font-extrabold text-sm text-gray-900 block">${cat.name}</span>
+              <span class="text-[10px] text-gray-400 font-bold uppercase">ID: ${cat.slug || cat.id}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="editCategory('${cat.id}')" class="text-blue-600 hover:text-blue-800 text-xs font-bold p-1">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="confirmDeleteCategory('${cat.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold p-1">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function handleSaveCategory(e) {
+      e.preventDefault();
+      const catId = document.getElementById('category-id').value;
+      const slug = document.getElementById('category-slug').value.trim().toLowerCase().replace(/\s+/g, '-');
+      const name = document.getElementById('category-name').value.trim();
+      const icon = document.getElementById('category-icon').value.trim() || 'fa-utensils';
+
+      if (catId) {
+        const cat = state.categories.find(c => c.id === catId);
+        if (cat) {
+          cat.slug = slug;
+          cat.name = name;
+          cat.icon = icon;
+        }
+        if (_supabase) {
+          try {
+            await _supabase.from('categories').update({ slug, name, icon }).eq('id', catId);
+          } catch(err) {}
+        }
+        showToast('Categoria atualizada com sucesso!', 'success');
+      } else {
+        const newCat = {
+          id: 'c' + Date.now(),
+          slug,
+          name,
+          icon
+        };
+
+        if (_supabase) {
+          try {
+            const { data } = await _supabase.from('categories').insert([{ slug, name, icon }]).select();
+            if (data && data.length > 0) {
+              newCat.id = data[0].id;
+            }
+          } catch(err) {}
+        }
+
+        state.categories.push(newCat);
+        showToast('Categoria criada com sucesso!', 'success');
+      }
+
+      saveDataLocally('categories');
+      cancelCategoryEdit();
+      renderAdminCategories();
+      renderCategories();
+      populateProductCategorySelect();
+    }
+
+    function editCategory(catId) {
+      const cat = state.categories.find(c => c.id === catId);
+      if (!cat) return;
+
+      document.getElementById('category-id').value = cat.id;
+      document.getElementById('category-slug').value = cat.slug || cat.id;
+      document.getElementById('category-name').value = cat.name;
+      document.getElementById('category-icon').value = cat.icon || 'fa-utensils';
+
+      document.getElementById('category-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-600"></i> Editar Categoria`;
+      document.getElementById('btn-cancel-category').classList.remove('hidden');
+    }
+
+    function cancelCategoryEdit() {
+      document.getElementById('category-id').value = '';
+      document.getElementById('form-category').reset();
+      document.getElementById('category-form-title').innerHTML = `<i class="fa-solid fa-plus-circle text-brand-600"></i> Nova Categoria`;
+      document.getElementById('btn-cancel-category').classList.add('hidden');
+    }
+
+    function confirmDeleteCategory(catId) {
+      openConfirmModal('Excluir Categoria', 'Deseja realmente remover esta categoria?', async (confirmed) => {
+        if (!confirmed) return;
+        state.categories = state.categories.filter(c => c.id !== catId);
+        saveDataLocally('categories');
+
+        if (_supabase) {
+          try {
+            await _supabase.from('categories').delete().eq('id', catId);
+          } catch(e) {}
+        }
+
+        renderAdminCategories();
+        renderCategories();
+        populateProductCategorySelect();
+        showToast('Categoria excluída.', 'info');
+      });
+    }
+
+    function populateProductCategorySelect() {
+      const select = document.getElementById('prod-category');
+      if (!select) return;
+
+      select.innerHTML = state.categories.map(cat => `
+        <option value="${cat.slug || cat.id}">${cat.name}</option>
+      `).join('');
     }
 
     function renderAdminProductsTable() {
@@ -1924,7 +2046,7 @@
           </td>
           <td class="px-6 py-4 text-right space-x-2">
             <button onclick="editProduct('${p.id}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs"><i class="fa-solid fa-pen-to-square"></i></button>
-            <button onclick="deleteProduct('${p.id}')" class="text-red-600 hover:text-red-800 font-bold text-xs"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="confirmDeleteProduct('${p.id}')" class="text-red-600 hover:text-red-800 font-bold text-xs"><i class="fa-solid fa-trash"></i></button>
           </td>
         </tr>
       `).join('');
@@ -1939,6 +2061,7 @@
     }
 
     function openAdminProductModal() {
+      populateProductCategorySelect();
       document.getElementById('prod-id').value = '';
       document.getElementById('form-admin-product').reset();
       document.getElementById('modal-admin-prod-title').innerText = 'Novo Produto';
@@ -1952,6 +2075,7 @@
     }
 
     function editProduct(productId) {
+      populateProductCategorySelect();
       const p = state.products.find(x => x.id === productId);
       if (!p) return;
 
@@ -2010,12 +2134,14 @@
       showToast('Produto salvo com sucesso!', 'success');
     }
 
-    function deleteProduct(productId) {
-      if (!confirm('Deseja excluir este produto do cardápio?')) return;
-      state.products = state.products.filter(p => p.id !== productId);
-      saveDataLocally('products');
-      renderAdminProductsTable();
-      showToast('Produto removido.', 'info');
+    function confirmDeleteProduct(productId) {
+      openConfirmModal('Excluir Produto', 'Deseja realmente remover este produto do cardápio?', (confirmed) => {
+        if (!confirmed) return;
+        state.products = state.products.filter(p => p.id !== productId);
+        saveDataLocally('products');
+        renderAdminProductsTable();
+        showToast('Produto removido.', 'info');
+      });
     }
 
     function renderAdminCoupons() {
@@ -2092,7 +2218,6 @@
 
     function renderAdminCustomers() {
       const body = document.getElementById('admin-customers-table-body');
-      
       const customersMap = {};
       state.orders.forEach(o => {
         if (!customersMap[o.customerPhone]) {
@@ -2132,17 +2257,11 @@
       if (type === 'error') bg = 'bg-red-600 text-white';
 
       toast.className = `${bg} px-4 py-3 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
-      toast.innerHTML = `
-        <i class="fa-solid fa-circle-info"></i>
-        <span>${message}</span>
-      `;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
 
       container.appendChild(toast);
 
-      setTimeout(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      }, 10);
-
+      setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
       setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
