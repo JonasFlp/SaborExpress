@@ -1017,25 +1017,34 @@
 
           // Buscar Pedidos do Supabase
           const { data: dbOrders, error: ordErr } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+          const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+
           if (!ordErr && dbOrders) {
-            state.orders = dbOrders.map(o => ({
-              id: o.order_number ? `#${o.order_number}` : o.id.substring(0, 8),
-              createdAt: o.created_at,
-              customerName: o.customer_name,
-              customerPhone: o.customer_phone,
-              address: o.delivery_address || 'Retirada',
-              orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
-              paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
-              cashChange: o.change_for,
-              items: [],
-              subtotal: parseFloat(o.subtotal || 0),
-              deliveryFee: parseFloat(o.delivery_fee || 0),
-              discount: parseFloat(o.discount_amount || 0),
-              total: parseFloat(o.total || 0),
-              status: (o.status || 'recebido').toUpperCase()
-            }));
+            state.orders = dbOrders.map(o => {
+              // Cruza a database com a memoria local para resgatar os items do carrinho e garantir persistência (F5)
+              const localMatched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
+
+              return {
+                id: o.id.substring(0, 6).toUpperCase(), // ID Curto para a tela do Usuário
+                dbId: o.id, // ID real UUID para updates no Supabase
+                createdAt: o.created_at,
+                customerName: o.customer_name,
+                customerPhone: o.customer_phone,
+                address: o.delivery_address || 'Retirada',
+                orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
+                paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
+                cashChange: o.change_for,
+                items: localMatched ? localMatched.items : [], // Mantém os itens mesmo após reload
+                subtotal: parseFloat(o.subtotal || 0),
+                deliveryFee: parseFloat(o.delivery_fee || 0),
+                discount: parseFloat(o.discount_amount || 0),
+                total: parseFloat(o.total || 0),
+                status: (o.status || 'recebido').toUpperCase()
+              };
+            });
+            saveDataLocally('orders');
           } else {
-            state.orders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+            state.orders = localOrders;
           }
 
           // Configurações e Cupons
@@ -1058,6 +1067,59 @@
       }
 
       checkSessionAndRoute();
+      subscribeToRealtimeOrders(); // Inicia canal em tempo real
+    }
+
+    function subscribeToRealtimeOrders() {
+      if (!_supabase) return;
+      try {
+        _supabase
+          .channel('public:orders')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async (payload) => {
+             // Recarrega os pedidos atualizados da base suavemente
+             const { data: dbOrders, error } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+             if (!error && dbOrders) {
+               const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+               state.orders = dbOrders.map(o => {
+                  const localMatched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
+                  return {
+                    id: o.id.substring(0, 6).toUpperCase(),
+                    dbId: o.id,
+                    createdAt: o.created_at,
+                    customerName: o.customer_name,
+                    customerPhone: o.customer_phone,
+                    address: o.delivery_address || 'Retirada',
+                    orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
+                    paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
+                    cashChange: o.change_for,
+                    items: localMatched ? localMatched.items : [],
+                    subtotal: parseFloat(o.subtotal || 0),
+                    deliveryFee: parseFloat(o.delivery_fee || 0),
+                    discount: parseFloat(o.discount_amount || 0),
+                    total: parseFloat(o.total || 0),
+                    status: (o.status || 'recebido').toUpperCase()
+                  };
+               });
+               saveDataLocally('orders');
+               
+               // Atualiza a interface sem F5
+               if (state.isMerchantAuthenticated) {
+                 renderAdminDashboard();
+                 renderAdminOrders();
+               } else {
+                 renderClientBanner();
+                 const trackModal = document.getElementById('modal-track');
+                 if (trackModal && !trackModal.classList.contains('hidden')) {
+                   const orderIdStr = document.getElementById('track-order-id').innerText.replace('#', '');
+                   openTrackModal(orderIdStr);
+                 }
+               }
+             }
+          })
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime indisponível:', e);
+      }
     }
 
     function saveDataLocally(key) {
@@ -1543,7 +1605,8 @@
       const totals = calculateCartTotals();
 
       const newOrder = {
-        id: '#' + Math.floor(1000 + Math.random() * 9000),
+        id: ('TEMP' + Math.floor(1000 + Math.random() * 9000)), // Temp ID até retornar do banco
+        dbId: null,
         createdAt: new Date().toISOString(),
         customerName,
         customerPhone,
@@ -1551,7 +1614,7 @@
         orderType,
         paymentMethod,
         cashChange: paymentMethod === 'CASH' ? document.getElementById('chk-cash-change').value : null,
-        items: [...state.cart],
+        items: [...state.cart], // Garante a persistência dos itens localmente
         subtotal: totals.subtotal,
         deliveryFee: orderType === 'DELIVERY' ? totals.deliveryFee : 0,
         discount: totals.discount,
@@ -1576,10 +1639,11 @@
           }]).select();
 
           if (!error && data && data.length > 0) {
-            newOrder.id = `#${data[0].order_number || data[0].id.substring(0, 5)}`;
+            newOrder.dbId = data[0].id;
+            newOrder.id = data[0].id.substring(0, 6).toUpperCase();
           }
         } catch (err) {
-          console.warn('Erro ao salvar no Supabase, salvando localmente:', err);
+          console.warn('Salvando localmente devido a falha na rede:', err);
         }
       }
 
@@ -1610,7 +1674,7 @@
         return;
       }
 
-      document.getElementById('track-order-id').innerText = order.id;
+      document.getElementById('track-order-id').innerText = '#' + order.id;
       document.getElementById('track-total-amount').innerText = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
       document.getElementById('track-address-text').innerText = order.address;
 
@@ -1689,7 +1753,7 @@
         <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
           <div class="flex justify-between items-center border-b border-gray-200 pb-2">
             <div>
-              <span class="font-black text-sm text-gray-900">${order.id}</span>
+              <span class="font-black text-sm text-gray-900">#${order.id}</span>
               <span class="text-[10px] text-gray-400 block">${new Date(order.createdAt).toLocaleString('pt-BR')}</span>
             </div>
             <span class="text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadgeColor(order.status)}">
@@ -1698,7 +1762,7 @@
           </div>
 
           <div class="space-y-1 text-xs text-gray-600">
-            ${order.items.map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
+            ${order.items.map(i => `<div>${i.quantity}x${i.product.name}</div>`).join('')}
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-200">
@@ -1782,7 +1846,7 @@
         <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
             <div class="flex items-center gap-3">
-              <span class="font-extrabold text-base text-gray-900">${order.id}</span>
+              <span class="font-extrabold text-base text-gray-900">#${order.id}</span>
               <span class="text-xs text-gray-400">${new Date(order.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
               <span class="text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadgeColor(order.status)}">${order.status}</span>
             </div>
@@ -1825,16 +1889,17 @@
       order.status = newStatus;
       saveDataLocally('orders');
 
-      if (_supabase && orderId.startsWith('#')) {
-        const num = parseInt(orderId.replace('#', ''));
-        if (!isNaN(num)) {
-          await _supabase.from('orders').update({ status: newStatus.toLowerCase() }).eq('order_number', num);
+      if (_supabase && order.dbId) {
+        try {
+          await _supabase.from('orders').update({ status: newStatus.toLowerCase() }).eq('id', order.dbId);
+        } catch(e) {
+          console.warn('Erro ao atualizar Supabase:', e);
         }
       }
 
       renderAdminDashboard();
       renderAdminOrders();
-      showToast(`Pedido ${orderId} atualizado para ${newStatus}`, 'info');
+      showToast(`Pedido #${order.id} atualizado para ${newStatus}`, 'info');
     }
 
     function renderAdminProductsTable() {
