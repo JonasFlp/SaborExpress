@@ -1037,8 +1037,9 @@
       state.isMerchantAuthenticated = localStorage.getItem('sb_merchant_session') === 'true';
 
       const localOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+      const localProducts = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
       state.categories = JSON.parse(localStorage.getItem('sb_categories')) || DEFAULT_CATEGORIES;
-      state.products = JSON.parse(localStorage.getItem('sb_products')) || DEFAULT_PRODUCTS;
+      state.products = localProducts;
       state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
       state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
 
@@ -1071,6 +1072,11 @@
               additionals: p.additionals || []
             }));
             saveDataLocally('products');
+          } else if (!prodErr && dbProducts && dbProducts.length === 0) {
+            // Se a tabela de produtos estiver vazia no Supabase, envia os padrões com UUIDs reais
+            await seedDefaultProductsToSupabase();
+          } else {
+            state.products = localProducts;
           }
 
           // Fetch Orders
@@ -1123,9 +1129,48 @@
         if (state.isMerchantAuthenticated) {
           renderAdminDashboard();
           renderAdminOrders();
+          renderAdminProductsTable();
+          renderAdminCategories();
         } else {
           renderClientBanner();
+          renderProducts();
         }
+      }
+    }
+
+    async function seedDefaultProductsToSupabase() {
+      if (!_supabase) return;
+      try {
+        const toInsert = DEFAULT_PRODUCTS.map(p => ({
+          name: p.name,
+          category: p.category,
+          category_id: p.category,
+          price: p.price,
+          image: p.image,
+          image_url: p.image,
+          description: p.description,
+          featured: p.featured,
+          available: p.available,
+          is_available: p.available,
+          additionals: p.additionals || []
+        }));
+        const { data, error } = await _supabase.from('products').insert(toInsert).select();
+        if (!error && data && data.length > 0) {
+          state.products = data.map(p => ({
+            id: String(p.id),
+            name: p.name,
+            category: p.category || p.category_id || 'lanches',
+            price: parseFloat(p.price || 0),
+            image: p.image || p.image_url,
+            description: p.description || '',
+            featured: !!(p.featured !== undefined ? p.featured : p.is_featured),
+            available: p.available !== undefined ? p.available : (p.is_available !== undefined ? p.is_available : true),
+            additionals: p.additionals || []
+          }));
+          saveDataLocally('products');
+        }
+      } catch (e) {
+        console.warn('Erro ao popular produtos no Supabase:', e);
       }
     }
 
@@ -1342,7 +1387,7 @@
         <div class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group">
           <div>
             <div class="relative h-44 overflow-hidden bg-gray-100">
-              <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              <img src="${product.image}" alt="${product.name}" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=SaborExpress'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
               ${product.featured ? `<span class="absolute top-3 left-3 bg-amber-500 text-slate-900 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow uppercase">Destaque</span>` : ''}
               ${!product.available ? `<div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center font-bold text-white text-xs">Esgotado</div>` : ''}
             </div>
@@ -2088,10 +2133,11 @@
       saveDataLocally('products');
       if (_supabase) {
         try {
-          await _supabase.from('products').update({ available: p.available }).eq('id', productId);
+          await _supabase.from('products').update({ available: p.available, is_available: p.available }).eq('id', productId);
         } catch(e) {}
       }
       renderAdminProductsTable();
+      renderProducts();
     }
 
     function openAdminProductModal() {
@@ -2137,6 +2183,19 @@
       const description = document.getElementById('prod-desc').value.trim();
       const featured = document.getElementById('prod-featured').checked;
 
+      const pData = {
+        name,
+        category,
+        category_id: category,
+        price,
+        image,
+        image_url: image,
+        description,
+        featured,
+        available: true,
+        is_available: true
+      };
+
       if (id) {
         const p = state.products.find(x => x.id === id);
         if (p) {
@@ -2147,17 +2206,29 @@
           p.description = description;
           p.featured = featured;
         }
+
+        let updatedInDb = false;
         if (_supabase) {
           try {
-            await _supabase.from('products').update({
-              name,
-              category,
-              price,
-              image,
-              description,
-              featured
-            }).eq('id', id);
-          } catch(err) {}
+            const { data, error } = await _supabase.from('products').update(pData).eq('id', id).select();
+            if (!error && data && data.length > 0) {
+              updatedInDb = true;
+            }
+          } catch(err) {
+            console.warn('Erro ao atualizar produto no Supabase:', err);
+          }
+
+          // Se falhou ao atualizar (por exemplo, ID inicial como "p1" inexistente no Supabase), insere novo no banco
+          if (!updatedInDb) {
+            try {
+              const { data, error } = await _supabase.from('products').insert([pData]).select();
+              if (!error && data && data.length > 0) {
+                if (p) p.id = String(data[0].id);
+              }
+            } catch(err) {
+              console.warn('Erro na inserção de fallback:', err);
+            }
+          }
         }
       } else {
         const newP = {
@@ -2173,20 +2244,13 @@
         };
         if (_supabase) {
           try {
-            const { data } = await _supabase.from('products').insert([{
-              name,
-              category,
-              price,
-              image,
-              description,
-              featured,
-              available: true,
-              additionals: []
-            }]).select();
-            if (data && data.length > 0) {
+            const { data, error } = await _supabase.from('products').insert([pData]).select();
+            if (!error && data && data.length > 0) {
               newP.id = String(data[0].id);
             }
-          } catch(err) {}
+          } catch(err) {
+            console.warn('Erro ao inserir novo produto no Supabase:', err);
+          }
         }
         state.products.push(newP);
       }
