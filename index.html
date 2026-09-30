@@ -1042,8 +1042,6 @@
       isMerchantAuthenticated: false
     };
 
-    let activeOrderChannel = null;
-
     // Audio cue for new incoming orders
     function playOrderNotificationSound() {
       try {
@@ -1075,7 +1073,7 @@
 
       if (_supabase) {
         try {
-          // 1. Carregar Configurações Globais da Loja
+          // 1. Carregar Configurações Globais da Loja sem depender de id estático 'main'
           const { data: dbSettingsList, error: setErr } = await _supabase
             .from('store_settings')
             .select('*')
@@ -1083,7 +1081,7 @@
 
           if (!setErr && dbSettingsList && dbSettingsList.length > 0) {
             const dbSettings = dbSettingsList[0];
-            window._storeSettingsId = dbSettings.id;
+            window._storeSettingsId = dbSettings.id; // Guarda o ID real da linha no banco
             state.settings = {
               ...state.settings,
               isOpen: dbSettings.is_open ?? state.settings.isOpen,
@@ -1183,40 +1181,28 @@
       populateProductCategorySelect();
       checkSessionAndRoute();
       updateQuickToggleBtn();
-
-      // Atualiza modais abertos no cliente
-      const trackModal = document.getElementById('modal-track');
-      if (trackModal && !trackModal.classList.contains('hidden')) {
-        const currentTrackedId = document.getElementById('track-order-id')?.innerText.replace('#', '');
-        if (currentTrackedId) openTrackModal(currentTrackedId);
-      }
-
-      const historyModal = document.getElementById('modal-history');
-      if (historyModal && !historyModal.classList.contains('hidden')) {
-        renderOrderHistory();
-      }
     }
 
     function subscribeToRealtimeSync() {
       if (!_supabase) return;
 
+      // Inicia apenas uma única vez o intervalo de polling contínuo (fallback mobile)
       if (!window._realtimePollingInterval) {
         window._realtimePollingInterval = setInterval(() => {
           initData();
-        }, 3000);
+        }, 4000);
       }
 
       if (isCanvas) return;
 
+      // Inicia apenas uma vez a escuta Realtime para não derrubar a conexão por duplicidade
       if (window._hasSubscribedRealtime) return;
       window._hasSubscribedRealtime = true;
 
       try {
         _supabase
           .channel('public:sync_all')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-            initData();
-          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => initData())
@@ -1265,7 +1251,7 @@
             if (data && data[0]) window._storeSettingsId = data[0].id;
           }
         } catch(e) {
-          console.warn('Erro ao sincronizar status da loja:', e);
+          console.warn('Erro ao sincronizar status da loja com o Supabase:', e);
         }
       }
 
@@ -1313,6 +1299,7 @@
       }
     }
 
+    // Keyboard shortcut (Ctrl + Shift + A) to open Merchant Login
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
         e.preventDefault();
@@ -1756,8 +1743,10 @@
             status: 'recebido'
           };
 
+          // Tenta salvar com a coluna items
           let { data, error } = await _supabase.from('orders').insert([{ ...orderPayload, items: newOrder.items }]).select();
           
+          // Se falhar (caso a coluna items não exista), retenta sem ela para garantir a criação do pedido
           if (error) {
             const retry = await _supabase.from('orders').insert([orderPayload]).select();
             if (!retry.error && retry.data) data = retry.data;
@@ -1790,11 +1779,8 @@
 
     function openTrackModal(orderId) {
       let order = null;
-      if (orderId) {
-        order = state.orders.find(o => o.id === orderId || o.dbId === orderId);
-      } else {
-        order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
-      }
+      if (orderId) order = state.orders.find(o => o.id === orderId);
+      else order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
 
       if (!order) return showToast('Nenhum pedido recente.', 'info');
 
@@ -1811,81 +1797,43 @@
       ];
 
       steps.forEach(step => {
-        if (step && step.children.length >= 2) {
-          step.children[0].className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow";
-          step.children[1].className = "text-[10px] font-bold text-gray-400";
-        }
+        step.children[0].className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow";
+        step.children[1].className = "text-[10px] font-bold text-gray-400";
       });
 
       let progressWidth = '0%';
       let activeIndex = 0;
 
-      const statusUpper = (order.status || 'RECEBIDO').toUpperCase();
+      if (order.status === 'RECEBIDO') activeIndex = 0;
+      else if (order.status === 'PREPARANDO') { progressWidth = '33%'; activeIndex = 1; }
+      else if (order.status === 'ENVIADO') { progressWidth = '66%'; activeIndex = 2; }
+      else if (order.status === 'ENTREGUE') { progressWidth = '100%'; activeIndex = 3; }
 
-      if (statusUpper === 'RECEBIDO') activeIndex = 0;
-      else if (statusUpper === 'PREPARANDO') { progressWidth = '33%'; activeIndex = 1; }
-      else if (statusUpper === 'ENVIADO') { progressWidth = '66%'; activeIndex = 2; }
-      else if (statusUpper === 'ENTREGUE') { progressWidth = '100%'; activeIndex = 3; }
-
-      if (lineProgress) lineProgress.style.width = progressWidth;
+      lineProgress.style.width = progressWidth;
 
       for (let i = 0; i <= activeIndex; i++) {
-        if (steps[i] && steps[i].children.length >= 2) {
-          steps[i].children[0].className = "w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold shadow ring-4 ring-brand-100";
-          steps[i].children[1].className = "text-[10px] font-extrabold text-brand-600";
-        }
+        steps[i].children[0].className = "w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold shadow ring-4 ring-brand-100";
+        steps[i].children[1].className = "text-[10px] font-extrabold text-brand-600";
       }
 
       const pixBox = document.getElementById('track-pix-box');
-      if (pixBox) {
-        if (order.paymentMethod === 'PIX' && statusUpper === 'RECEBIDO') {
-          pixBox.classList.remove('hidden');
-          const pixKeyEl = document.getElementById('track-pix-key');
-          if (pixKeyEl) pixKeyEl.innerText = state.settings.pixKey || 'contato@saborexpress.com';
-        } else {
-          pixBox.classList.add('hidden');
-        }
+      if (order.paymentMethod === 'PIX' && order.status === 'RECEBIDO') {
+        pixBox.classList.remove('hidden');
+        document.getElementById('track-pix-key').innerText = state.settings.pixKey;
+      } else {
+        pixBox.classList.add('hidden');
       }
 
       const itemsList = document.getElementById('track-items-list');
-      if (itemsList) {
-        itemsList.innerHTML = (order.items || []).map(item => `
-          <div class="flex justify-between">
-            <span>${item.quantity}x ${item.product ? item.product.name : 'Item'}</span>
-            <span>R$ ${((item.unitTotal || 0) * item.quantity).toFixed(2).replace('.', ',')}</span>
-          </div>
-        `).join('');
-      }
+      itemsList.innerHTML = (order.items || []).map(item => `
+        <div class="flex justify-between">
+          <span>${item.quantity}x ${item.product.name}</span>
+          <span>R$ ${(item.unitTotal * item.quantity).toFixed(2).replace('.', ',')}</span>
+        </div>
+      `).join('');
 
-      // Escuta dedicada de Realtime para o pedido que o celular está acompanhando no momento
-      if (_supabase && order.dbId && !isCanvas) {
-        if (activeOrderChannel) {
-          _supabase.removeChannel(activeOrderChannel);
-        }
-
-        activeOrderChannel = _supabase
-          .channel(`order_track_${order.dbId}`)
-          .on('postgres_changes', { 
-            event: 'UPDATE', 
-            schema: 'public', 
-            table: 'orders', 
-            filter: `id=eq.${order.dbId}` 
-          }, (payload) => {
-            if (payload.new) {
-              const newStatus = (payload.new.status || 'RECEBIDO').toUpperCase();
-              order.status = newStatus;
-              showToast(`Status do pedido alterado para: ${newStatus}`, 'info');
-              openTrackModal(order.id);
-            }
-          })
-          .subscribe();
-      }
-
-      const modalTrack = document.getElementById('modal-track');
-      if (modalTrack) {
-        modalTrack.classList.remove('hidden');
-        modalTrack.classList.add('flex');
-      }
+      document.getElementById('modal-track').classList.remove('hidden');
+      document.getElementById('modal-track').classList.add('flex');
     }
 
     function closeTrackModal() {
@@ -1924,7 +1872,7 @@
           </div>
 
           <div class="space-y-1 text-xs text-gray-600">
-            ${(order.items || []).map(i => `<div>${i.quantity}x ${i.product ? i.product.name : 'Item'}</div>`).join('')}
+            ${(order.items || []).map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-200">
@@ -2012,44 +1960,202 @@
         return;
       }
 
-      list.innerHTML = filtered.map(order => `
-        <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
-            <div class="flex items-center gap-3">
-              <span class="font-extrabold text-base text-gray-900">#${order.id}</span>
-              <span class="text-xs text-gray-400">${new Date(order.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
-              <span class="text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadgeColor(order.status)}">${order.status}</span>
+      list.innerHTML = filtered.map(order => {
+        const items = order.items || [];
+        const itemsHtml = items.length > 0 ? items.map(item => {
+          const prodName = item.product ? item.product.name : (item.name || 'Item');
+          const adds = item.selectedAdditionals || item.additionals || [];
+          const addsText = adds.length > 0 ? adds.map(a => a.name).join(', ') : '';
+          const obs = item.observations || item.obs || '';
+
+          return `
+            <div class="border-b border-gray-100 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+              <div class="flex justify-between items-start font-bold text-gray-800 text-xs">
+                <span>${item.quantity}x ${prodName}</span>
+                <span>R$ ${((item.unitTotal || item.product?.price || 0) * item.quantity).toFixed(2).replace('.', ',')}</span>
+              </div>
+              ${addsText ? `<div class="text-[11px] text-brand-600 font-medium pl-3 mt-0.5"><i class="fa-solid fa-plus text-[9px]"></i> ${addsText}</div>` : ''}
+              ${obs ? `<div class="text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded-md mt-1 font-semibold border border-amber-200/60"><i class="fa-solid fa-comment-dots text-[10px] mr-1"></i> Obs: "${obs}"</div>` : ''}
+            </div>
+          `;
+        }).join('') : `<p class="text-gray-400 italic text-[11px]">Nenhum item detalhado neste pedido.</p>`;
+
+        return `
+          <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
+            <!-- Cabeçalho do Card -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div class="flex items-center gap-3">
+                <span class="font-extrabold text-base text-gray-900">#${order.id}</span>
+                <span class="text-xs text-gray-400">${new Date(order.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadgeColor(order.status)}">${order.status}</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <!-- Botão de Impressão de Cupom para Cozinha -->
+                <button onclick="printOrderTicket('${order.id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow flex items-center gap-1.5" title="Imprimir Cupom da Cozinha">
+                  <i class="fa-solid fa-print text-amber-400"></i>
+                  <span>Imprimir Cupom</span>
+                </button>
+
+                <div class="flex items-center gap-1.5">
+                  <label class="text-xs font-bold text-gray-500 uppercase">Status:</label>
+                  <select onchange="updateOrderStatus('${order.id}', this.value)" class="text-xs font-bold bg-gray-100 border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-brand-500">
+                    <option value="RECEBIDO" ${order.status === 'RECEBIDO' ? 'selected' : ''}>Recebido</option>
+                    <option value="PREPARANDO" ${order.status === 'PREPARANDO' ? 'selected' : ''}>Em Preparo</option>
+                    <option value="ENVIADO" ${order.status === 'ENVIADO' ? 'selected' : ''}>Saiu p/ Entrega</option>
+                    <option value="ENTREGUE" ${order.status === 'ENTREGUE' ? 'selected' : ''}>Entregue</option>
+                    <option value="CANCELADO" ${order.status === 'CANCELADO' ? 'selected' : ''}>Cancelado</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-gray-500 uppercase">Status:</label>
-              <select onchange="updateOrderStatus('${order.id}', this.value)" class="text-xs font-bold bg-gray-100 border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-brand-500">
-                <option value="RECEBIDO" ${order.status === 'RECEBIDO' ? 'selected' : ''}>Recebido</option>
-                <option value="PREPARANDO" ${order.status === 'PREPARANDO' ? 'selected' : ''}>Em Preparo</option>
-                <option value="ENVIADO" ${order.status === 'ENVIADO' ? 'selected' : ''}>Saiu p/ Entrega</option>
-                <option value="ENTREGUE" ${order.status === 'ENTREGUE' ? 'selected' : ''}>Entregue</option>
-                <option value="CANCELADO" ${order.status === 'CANCELADO' ? 'selected' : ''}>Cancelado</option>
-              </select>
-            </div>
-          </div>
+            <!-- Corpo do Card -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <!-- Dados do Cliente e Entrega -->
+              <div class="space-y-2">
+                <p class="font-bold text-gray-800"><i class="fa-solid fa-user text-brand-600 mr-1"></i> ${order.customerName} (${order.customerPhone})</p>
+                <p class="text-gray-600"><i class="fa-solid fa-location-dot text-brand-600 mr-1"></i> ${order.address}</p>
+                <p class="text-gray-600"><i class="fa-solid fa-wallet text-brand-600 mr-1"></i> Pagamento: <strong>${order.paymentMethod}</strong> ${order.cashChange ? '(Troco p/ R$ '+order.cashChange+')' : ''}</p>
+                <p class="text-gray-600"><i class="fa-solid fa-truck text-brand-600 mr-1"></i> Tipo: <strong>${order.orderType === 'DELIVERY' ? 'Entrega' : 'Retirada no Balcão'}</strong></p>
+              </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div class="space-y-1">
-              <p class="font-bold text-gray-800"><i class="fa-solid fa-user text-brand-600"></i> ${order.customerName} (${order.customerPhone})</p>
-              <p class="text-gray-600"><i class="fa-solid fa-location-dot text-brand-600"></i> ${order.address}</p>
-              <p class="text-gray-600"><i class="fa-solid fa-wallet text-brand-600"></i> Pagamento: <strong>${order.paymentMethod}</strong> ${order.cashChange ? '(Troco p/ R$ '+order.cashChange+')' : ''}</p>
-            </div>
+              <!-- Resumo dos Itens, Complementos e Observações -->
+              <div class="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2">
+                <p class="font-bold text-gray-700 uppercase text-[10px] tracking-wider mb-2 border-b border-gray-200 pb-1">Itens do Pedido & Detalhes</p>
+                
+                <div class="max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                  ${itemsHtml}
+                </div>
 
-            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1">
-              <p class="font-bold text-gray-700 uppercase text-[10px] tracking-wider mb-1">Resumo do Pedido</p>
-              <div class="flex justify-between font-black text-gray-900 border-t border-gray-200 pt-1 text-sm">
-                <span>Total</span>
-                <span class="text-brand-600">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                <div class="space-y-1 pt-2 border-t border-gray-200 text-xs">
+                  <div class="flex justify-between text-gray-500 text-[11px]">
+                    <span>Subtotal:</span>
+                    <span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  ${order.deliveryFee > 0 ? `
+                    <div class="flex justify-between text-gray-500 text-[11px]">
+                      <span>Taxa de Entrega:</span>
+                      <span>R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  ` : ''}
+                  ${order.discount > 0 ? `
+                    <div class="flex justify-between text-emerald-600 text-[11px] font-semibold">
+                      <span>Desconto:</span>
+                      <span>- R$ ${(order.discount || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  ` : ''}
+                  <div class="flex justify-between font-black text-gray-900 pt-1 text-sm border-t border-gray-200">
+                    <span>Total:</span>
+                    <span class="text-brand-600">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+    }
+
+    // Função para gerar e imprimir o cupom fiscal/não fiscal para a cozinha
+    function printOrderTicket(orderId) {
+      const order = state.orders.find(o => o.id === orderId || o.dbId === orderId);
+      if (!order) return showToast('Pedido não encontrado para impressão.', 'error');
+
+      const printWindow = window.open('', '_blank', 'width=400,height=600');
+      if (!printWindow) return showToast('Permita janelas pop-up para imprimir o cupom.', 'error');
+
+      const items = order.items || [];
+      const itemsTicketHtml = items.map(item => {
+        const prodName = item.product ? item.product.name : (item.name || 'Item');
+        const adds = item.selectedAdditionals || item.additionals || [];
+        const addsText = adds.length > 0 ? adds.map(a => `+ ${a.name}`).join('<br>&nbsp;&nbsp;') : '';
+        const obs = item.observations || item.obs || '';
+
+        return `
+          <tr>
+            <td style="vertical-align: top; font-weight: bold; width: 25px;">${item.quantity}x</td>
+            <td style="vertical-align: top;">
+              <strong>${prodName}</strong>
+              ${addsText ? `<div style="font-size: 11px; color: #444;">&nbsp;&nbsp;${addsText}</div>` : ''}
+              ${obs ? `<div style="font-size: 11px; font-weight: bold; background: #eee; padding: 2px 4px; margin-top: 2px;">OBS: ${obs}</div>` : ''}
+            </td>
+            <td style="vertical-align: top; text-align: right; white-space: nowrap;">R$ ${((item.unitTotal || item.product?.price || 0) * item.quantity).toFixed(2).replace('.', ',')}</td>
+          </tr>
+          <tr><td colspan="3" style="border-bottom: 1px dashed #ccc; padding-bottom: 4px;"></td></tr>
+        `;
+      }).join('');
+
+      const ticketContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Cupom Pedido #${order.id}</title>
+          <style>
+            @page { size: 80mm auto; margin: 0; }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              width: 72mm;
+              margin: 0 auto;
+              padding: 5mm 0;
+              font-size: 12px;
+              color: #000;
+            }
+            .text-center { text-align: center; }
+            .text-bold { font-weight: bold; }
+            .line { border-bottom: 1px dashed #000; margin: 5px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 5px 0; }
+            td { padding: 2px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="text-center text-bold" style="font-size: 16px;">${state.settings.storeName || 'SaborExpress Delivery'}</div>
+          <div class="text-center" style="font-size: 10px; margin-bottom: 5px;">CUPOM DE PRODUÇÃO / COZINHA</div>
+          <div class="line"></div>
+          
+          <div><strong>PEDIDO:</strong> #${order.id}</div>
+          <div><strong>DATA:</strong> ${new Date(order.createdAt).toLocaleString('pt-BR')}</div>
+          <div><strong>CLIENTE:</strong> ${order.customerName}</div>
+          <div><strong>TEL:</strong> ${order.customerPhone}</div>
+          <div><strong>TIPO:</strong> ${order.orderType === 'DELIVERY' ? 'ENTREGA' : 'RETIRADA NO BALCÃO'}</div>
+          <div style="font-size: 11px;"><strong>ENDEREÇO:</strong> ${order.address}</div>
+          <div><strong>PAGAMENTO:</strong> ${order.paymentMethod} ${order.cashChange ? '(Troco: R$ '+order.cashChange+')' : ''}</div>
+          
+          <div class="line"></div>
+          <div class="text-bold text-center">ITENS DO PEDIDO</div>
+          <div class="line"></div>
+
+          <table>
+            ${itemsTicketHtml}
+          </table>
+
+          <div class="line"></div>
+          <table>
+            <tr><td>Subtotal:</td><td style="text-align: right;">R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</td></tr>
+            ${order.deliveryFee > 0 ? `<tr><td>Taxa Entrega:</td><td style="text-align: right;">R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}</td></tr>` : ''}
+            ${order.discount > 0 ? `<tr><td>Desconto:</td><td style="text-align: right;">- R$ ${(order.discount || 0).toFixed(2).replace('.', ',')}</td></tr>` : ''}
+            <tr style="font-size: 14px; font-weight: bold;">
+              <td>TOTAL:</td>
+              <td style="text-align: right;">R$ ${order.total.toFixed(2).replace('.', ',')}</td>
+            </tr>
+          </table>
+          <div class="line"></div>
+          <div class="text-center" style="margin-top: 10px;">*** OBRIGADO PELA PREFERÊNCIA ***</div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(() => { window.close(); }, 500);
+            };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.open();
+      printWindow.document.write(ticketContent);
+      printWindow.document.close();
     }
 
     async function updateOrderStatus(orderId, newStatus) {
