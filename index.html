@@ -95,20 +95,28 @@
         </div>
 
         <!-- Customer Utilities -->
-        <div class="flex items-center gap-3">
-          <button id="btn-active-track" onclick="openTrackModal()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2 pulse-ring">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Active Track Button if Order Exists -->
+          <button id="btn-active-track" onclick="openTrackModal()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2 pulse-ring">
             <i class="fa-solid fa-motorcycle text-sm"></i>
             <span class="hidden sm:inline">Acompanhar Pedido</span>
           </button>
 
+          <!-- History -->
           <button onclick="openHistoryModal()" class="p-2.5 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition" title="Meus Pedidos">
             <i class="fa-solid fa-clock-rotate-left text-lg"></i>
           </button>
 
-          <button onclick="openCartDrawer()" class="relative flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-lg shadow-brand-600/20 active:scale-95">
+          <!-- Cart Button -->
+          <button onclick="openCartDrawer()" class="relative flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-3.5 sm:px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-lg shadow-brand-600/20 active:scale-95">
             <i class="fa-solid fa-basket-shopping"></i>
             <span class="hidden sm:inline">Carrinho</span>
             <span id="cart-badge" class="bg-white text-brand-700 text-xs w-5 h-5 rounded-full flex items-center justify-center font-black">0</span>
+          </button>
+
+          <!-- Direct Admin Access Trigger in Header (Easy access for mobile) -->
+          <button onclick="openMerchantLoginModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition ml-1" title="Acesso Lojista">
+            <i class="fa-solid fa-lock text-sm"></i>
           </button>
         </div>
 
@@ -133,13 +141,17 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button onclick="testSupabaseConnection()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-network-wired"></i>
+            <span class="hidden sm:inline">Diagnóstico</span>
+          </button>
           <span id="merchant-email-badge" class="hidden md:inline-block text-xs font-semibold bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">
             admin@restaurante.com
           </span>
-          <button onclick="handleMerchantLogout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
+          <button onclick="handleMerchantLogout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
             <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Sair do Painel</span>
+            <span>Sair</span>
           </button>
         </div>
 
@@ -152,9 +164,10 @@
   <!-- ========================================================================= -->
   <main id="view-customer" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     
-    <!-- Hero Banner -->
+    <!-- Hero Banner with Background Image Restored -->
     <div id="store-banner" class="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-brand-dark text-white p-6 md:p-8 shadow-xl">
-      <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-15"></div>
+      <!-- High Quality Food Background with Overlay -->
+      <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-20"></div>
       
       <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div class="space-y-2">
@@ -193,7 +206,7 @@
 
         <div class="text-xs text-gray-500 font-medium flex items-center gap-2 self-end md:self-center">
           <i class="fa-solid fa-database text-emerald-500 text-sm"></i>
-          <span>Integração em tempo real com Supabase</span>
+          <span>Cardápio em tempo real com Supabase</span>
         </div>
       </div>
 
@@ -211,7 +224,7 @@
       </div>
 
       <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        <!-- Dynamic Product Cards -->
+        <!-- Dynamic Product Cards with "+ Adicionar" button -->
       </div>
 
       <div id="no-products-msg" class="hidden text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
@@ -238,12 +251,19 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <button onclick="testSupabaseConnection()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition shadow flex items-center gap-1.5" title="Testar tabelas no banco de dados">
+          <i class="fa-solid fa-stethoscope text-emerald-400"></i>
+          <span>Diagnóstico Supabase</span>
+        </button>
         <button onclick="openAdminProductModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition shadow-md flex items-center gap-2">
           <i class="fa-solid fa-plus"></i>
           <span>Novo Produto</span>
         </button>
       </div>
     </div>
+
+    <!-- Supabase Diagnostic Banner -->
+    <div id="supabase-diag-banner" class="hidden p-4 rounded-2xl border text-xs font-semibold space-y-1 transition-all"></div>
 
     <!-- KPIs Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -368,19 +388,19 @@
           <form id="form-category" onsubmit="handleSaveCategory(event)" class="space-y-3">
             <input type="hidden" id="category-id">
             <div>
-              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Identificador (ID / Slug)</label>
+              <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Identificador (Slug)</label>
               <input type="text" id="category-slug" required placeholder="ex: lanches, porcoes, bebidas" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
             </div>
 
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nome Exibido</label>
-              <input type="text" id="category-name" required placeholder="Ex: Lanches, Bebidas, Porções" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <input type="text" id="category-name" required placeholder="Ex: Lanches, Bolos, Doces" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
             </div>
 
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Ícone (FontAwesome)</label>
-              <input type="text" id="category-icon" required placeholder="fa-burger, fa-pizza-slice, fa-cake-candles" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
-              <span class="text-[10px] text-gray-400">Ex: fa-burger, fa-pizza-slice, fa-utensils, fa-ice-cream, fa-cake-candles</span>
+              <input type="text" id="category-icon" required placeholder="fa-cake-candles, fa-burger, fa-pizza-slice" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <span class="text-[10px] text-gray-400">Ex: fa-cake-candles (bolo), fa-burger, fa-pizza-slice, fa-wine-glass</span>
             </div>
 
             <div class="flex items-center gap-2 pt-2">
@@ -524,15 +544,24 @@
 
   </main>
 
+  <!-- ========================================================================= -->
+  <!-- PUBLIC FOOTER WITH MERCHANT ACCESS -->
+  <!-- ========================================================================= -->
   <footer id="public-footer" class="bg-white border-t border-gray-200 mt-auto py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
       <p class="text-xs text-gray-400">© 2026 SaborExpress Delivery. Conectado ao Supabase.</p>
-      <button onclick="openMerchantLoginModal()" class="text-xs text-gray-400 hover:text-gray-600 transition flex items-center gap-1">
-        <i class="fa-solid fa-lock text-[10px]"></i>
+      
+      <!-- Merchant Portal Access Trigger -->
+      <button onclick="openMerchantLoginModal()" class="text-xs text-gray-500 hover:text-brand-600 font-bold transition flex items-center gap-1.5 py-1 px-3 rounded-lg hover:bg-gray-50 border border-gray-200 sm:border-transparent">
+        <i class="fa-solid fa-lock text-[11px] text-brand-600"></i>
         <span>Acesso Restrito do Lojista</span>
       </button>
     </div>
   </footer>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS & DRAWERS -->
+  <!-- ========================================================================= -->
 
   <!-- 1. MERCHANT LOGIN MODAL -->
   <div id="modal-merchant-login" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
@@ -870,7 +899,7 @@
 
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase mb-1">URL da Imagem</label>
-          <input type="url" id="prod-image" required placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          <input type="text" id="prod-image" required placeholder="https://images.unsplash.com/..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
         </div>
 
         <div>
@@ -913,9 +942,12 @@
     </div>
   </div>
 
-  <!-- Toast Container -->
+  <!-- Toast Notification Container -->
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC & SUPABASE INTEGRATION -->
+  <!-- ========================================================================= -->
   <script>
     const isCanvas = (function() {
       try {
@@ -927,13 +959,12 @@
       return false;
     })();
 
-    // In Canvas iframes, browser security policies restrict raw WebSocket creation.
-    // Intercept native WebSocket creation in Canvas to prevent uncatchable SecurityError.
+    // In Canvas sandboxed iframes, intercept raw WebSockets to prevent SecurityError
     if (isCanvas && typeof window !== 'undefined' && window.WebSocket) {
       const NativeWebSocket = window.WebSocket;
       window.WebSocket = function(url, protocols) {
         const dummySocket = {
-          readyState: 3, // CLOSED
+          readyState: 3,
           url: url,
           close: function() {},
           send: function() {},
@@ -1018,7 +1049,7 @@
 
       if (_supabase) {
         try {
-          // 1. Carregar Categorias do Supabase
+          // 1. Carregar Categorias
           const { data: dbCategories, error: catErr } = await _supabase.from('categories').select('*');
           if (!catErr && dbCategories && dbCategories.length > 0) {
             state.categories = dbCategories.map(c => ({
@@ -1030,7 +1061,7 @@
             saveDataLocally('categories');
           }
 
-          // 2. Carregar Produtos do Supabase
+          // 2. Carregar Produtos
           const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
           if (!prodErr && dbProducts && dbProducts.length > 0) {
             state.products = dbProducts.map(p => ({
@@ -1045,11 +1076,9 @@
               additionals: p.additionals || []
             }));
             saveDataLocally('products');
-          } else if (!prodErr && dbProducts && dbProducts.length === 0) {
-            await seedDefaultProducts();
           }
 
-          // 3. Carregar Pedidos do Supabase
+          // 3. Carregar Pedidos
           const { data: dbOrders } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
           if (dbOrders && dbOrders.length > 0) {
             const mappedDb = dbOrders.map(o => {
@@ -1094,46 +1123,12 @@
 
       populateProductCategorySelect();
       checkSessionAndRoute();
-      subscribeToRealtimeOrders();
+      subscribeToRealtimeSync();
     }
 
-    async function seedDefaultProducts() {
-      if (!_supabase) return;
-      try {
-        const toInsert = DEFAULT_PRODUCTS.map(p => ({
-          name: p.name,
-          category: p.category,
-          price: p.price,
-          image: p.image,
-          description: p.description,
-          featured: p.featured,
-          available: p.available,
-          additionals: p.additionals || []
-        }));
-        const { data, error } = await _supabase.from('products').insert(toInsert).select();
-        if (!error && data && data.length > 0) {
-          state.products = data.map(p => ({
-            id: String(p.id),
-            name: p.name,
-            category: p.category,
-            price: parseFloat(p.price || 0),
-            image: p.image,
-            description: p.description,
-            featured: p.featured,
-            available: p.available,
-            additionals: p.additionals || []
-          }));
-          saveDataLocally('products');
-        }
-      } catch(e) {
-        console.warn('Erro ao popular produtos no Supabase:', e);
-      }
-    }
-
-    function subscribeToRealtimeOrders() {
+    function subscribeToRealtimeSync() {
       if (!_supabase) return;
 
-      // In the Canvas iframe preview, bypass WebSockets and use polling fallback to prevent SecurityError
       if (isCanvas) {
         if (!window._canvasPollingInterval) {
           window._canvasPollingInterval = setInterval(() => {
@@ -1146,21 +1141,13 @@
       try {
         _supabase
           .channel('public:sync_all')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-             initData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-             initData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-             initData();
-          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => initData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
           .subscribe();
       } catch(e) {
         if (!window._canvasPollingInterval) {
-          window._canvasPollingInterval = setInterval(() => {
-            initData();
-          }, 4000);
+          window._canvasPollingInterval = setInterval(() => initData(), 4000);
         }
       }
     }
@@ -1205,6 +1192,7 @@
       }
     }
 
+    // Keyboard shortcut (Ctrl + Shift + A) to open Merchant Login
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
         e.preventDefault();
@@ -1276,17 +1264,19 @@
 
     function renderCategories() {
       const container = document.getElementById('category-pills');
+      if (!container) return;
       const allPill = { id: 'ALL', name: 'Todos', icon: 'fa-border-all', slug: 'ALL' };
       const categoriesList = [allPill, ...(state.categories || [])];
 
       container.innerHTML = categoriesList.map(cat => {
         const catSlug = cat.slug || cat.id;
         const isActive = state.currentCategory === catSlug;
+        const iconName = (cat.icon && cat.icon.startsWith('fa-')) ? cat.icon : ('fa-' + (cat.icon || 'utensils'));
         return `
           <button onclick="setCategory('${catSlug}')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
             isActive ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
           }">
-            <i class="fa-solid ${cat.icon || 'fa-tag'}"></i>
+            <i class="fa-solid ${iconName}"></i>
             <span>${cat.name}</span>
           </button>
         `;
@@ -1825,10 +1815,17 @@
       const pendingCount = state.orders.filter(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO').length;
       const ticket = ordersCount > 0 ? totalRevenue / ordersCount : 0;
 
-      document.getElementById('kpi-revenue').innerText = `R$ ${totalRevenue.toFixed(2).replace('.', ',')}`;
-      document.getElementById('kpi-orders-count').innerText = ordersCount;
-      document.getElementById('kpi-pending-label').innerText = `${pendingCount} em andamento`;
-      document.getElementById('kpi-ticket').innerText = `R$ ${ticket.toFixed(2).replace('.', ',')}`;
+      const elRev = document.getElementById('kpi-revenue');
+      if (elRev) elRev.innerText = `R$ ${totalRevenue.toFixed(2).replace('.', ',')}`;
+
+      const elOrders = document.getElementById('kpi-orders-count');
+      if (elOrders) elOrders.innerText = ordersCount;
+
+      const elPending = document.getElementById('kpi-pending-label');
+      if (elPending) elPending.innerText = `${pendingCount} em andamento`;
+
+      const elTicket = document.getElementById('kpi-ticket');
+      if (elTicket) elTicket.innerText = `R$ ${ticket.toFixed(2).replace('.', ',')}`;
     }
 
     function renderAdminOrders() {
@@ -1910,27 +1907,30 @@
         return;
       }
 
-      container.innerHTML = state.categories.map(cat => `
-        <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
-              <i class="fa-solid ${cat.icon || 'fa-utensils'}"></i>
+      container.innerHTML = state.categories.map(cat => {
+        const iconName = (cat.icon && cat.icon.startsWith('fa-')) ? cat.icon : ('fa-' + (cat.icon || 'utensils'));
+        return `
+          <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                <i class="fa-solid ${iconName}"></i>
+              </div>
+              <div>
+                <span class="font-extrabold text-sm text-gray-900 block">${cat.name}</span>
+                <span class="text-[10px] text-gray-400 font-bold uppercase">ID: ${cat.slug || cat.id}</span>
+              </div>
             </div>
-            <div>
-              <span class="font-extrabold text-sm text-gray-900 block">${cat.name}</span>
-              <span class="text-[10px] text-gray-400 font-bold uppercase">ID: ${cat.slug || cat.id}</span>
+            <div class="flex items-center gap-2">
+              <button onclick="editCategory('${cat.id}')" class="text-blue-600 hover:text-blue-800 text-xs font-bold p-1">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="confirmDeleteCategory('${cat.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold p-1">
+                <i class="fa-solid fa-trash"></i>
+              </button>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button onclick="editCategory('${cat.id}')" class="text-blue-600 hover:text-blue-800 text-xs font-bold p-1">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            <button onclick="confirmDeleteCategory('${cat.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold p-1">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     async function handleSaveCategory(e) {
@@ -2148,10 +2148,13 @@
         category,
         price,
         image,
+        image_url: image,
         description,
         featured,
         available: true
       };
+
+      let supabaseError = null;
 
       if (id) {
         const p = state.products.find(x => x.id === id);
@@ -2169,17 +2172,35 @@
           if (id.length > 10) {
             try {
               const { data, error } = await _supabase.from('products').update(pData).eq('id', id).select();
-              if (!error && data && data.length > 0) updatedInDb = true;
-            } catch(err) {}
+              if (error) {
+                delete pData.image_url;
+                const retry = await _supabase.from('products').update(pData).eq('id', id).select();
+                if (retry.error) supabaseError = retry.error.message;
+                else updatedInDb = true;
+              } else if (data && data.length > 0) {
+                updatedInDb = true;
+              }
+            } catch(err) {
+              supabaseError = err.message;
+            }
           }
 
           if (!updatedInDb) {
             try {
               const { data, error } = await _supabase.from('products').insert([pData]).select();
-              if (!error && data && data.length > 0) {
-                if (p) p.id = String(data[0].id);
+              if (error) {
+                delete pData.image_url;
+                const retry = await _supabase.from('products').insert([pData]).select();
+                if (retry.error) supabaseError = retry.error.message;
+                else if (retry.data && retry.data.length > 0 && p) {
+                  p.id = String(retry.data[0].id);
+                }
+              } else if (data && data.length > 0 && p) {
+                p.id = String(data[0].id);
               }
-            } catch(err) {}
+            } catch(err) {
+              supabaseError = err.message;
+            }
           }
         }
       } else {
@@ -2198,10 +2219,17 @@
         if (_supabase) {
           try {
             const { data, error } = await _supabase.from('products').insert([pData]).select();
-            if (!error && data && data.length > 0) {
+            if (error) {
+              delete pData.image_url;
+              const retry = await _supabase.from('products').insert([pData]).select();
+              if (retry.error) supabaseError = retry.error.message;
+              else if (retry.data && retry.data.length > 0) newP.id = String(retry.data[0].id);
+            } else if (data && data.length > 0) {
               newP.id = String(data[0].id);
             }
-          } catch(err) {}
+          } catch(err) {
+            supabaseError = err.message;
+          }
         }
 
         state.products.push(newP);
@@ -2211,7 +2239,60 @@
       renderAdminProductsTable();
       renderProducts();
       closeAdminProductModal();
-      showToast('Produto salvo e sincronizado na nuvem!', 'success');
+
+      if (supabaseError) {
+        showToast(`Salvo localmente, erro Supabase: ${supabaseError}`, 'error');
+      } else {
+        showToast('Produto salvo e sincronizado na nuvem!', 'success');
+      }
+    }
+
+    async function testSupabaseConnection() {
+      const banner = document.getElementById('supabase-diag-banner');
+      banner.classList.remove('hidden');
+      banner.className = 'p-4 rounded-2xl border text-xs font-semibold bg-slate-100 border-slate-300 text-slate-800 space-y-1';
+      banner.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Executando diagnóstico com o Supabase...';
+
+      if (!_supabase) {
+        banner.className = 'p-4 rounded-2xl border text-xs font-semibold bg-red-50 border-red-200 text-red-700';
+        banner.innerHTML = '<strong>❌ Erro:</strong> SDK do Supabase não inicializado.';
+        return;
+      }
+
+      let reports = [];
+
+      try {
+        const { data, error } = await _supabase.from('products').select('id, name, image').limit(5);
+        if (error) reports.push(`<span class="text-red-600">❌ <strong>Tabela 'products':</strong> ${error.message}</span>`);
+        else reports.push(`<span class="text-emerald-700">✅ <strong>Tabela 'products':</strong> OK (${data.length} itens encontrados)</span>`);
+      } catch(e) {
+        reports.push(`<span class="text-red-600">❌ <strong>Tabela 'products':</strong> Falha de rede: ${e.message}</span>`);
+      }
+
+      try {
+        const { data, error } = await _supabase.from('categories').select('id, name, slug').limit(5);
+        if (error) reports.push(`<span class="text-red-600">❌ <strong>Tabela 'categories':</strong> ${error.message}</span>`);
+        else reports.push(`<span class="text-emerald-700">✅ <strong>Tabela 'categories':</strong> OK (${data.length} categorias encontradas)</span>`);
+      } catch(e) {
+        reports.push(`<span class="text-red-600">❌ <strong>Tabela 'categories':</strong> Falha de rede: ${e.message}</span>`);
+      }
+
+      try {
+        const { data, error } = await _supabase.from('orders').select('id, status').limit(5);
+        if (error) reports.push(`<span class="text-red-600">❌ <strong>Tabela 'orders':</strong> ${error.message}</span>`);
+        else reports.push(`<span class="text-emerald-700">✅ <strong>Tabela 'orders':</strong> OK (${data.length} pedidos encontrados)</span>`);
+      } catch(e) {
+        reports.push(`<span class="text-red-600">❌ <strong>Tabela 'orders':</strong> Falha de rede: ${e.message}</span>`);
+      }
+
+      banner.className = 'p-4 rounded-2xl border text-xs font-semibold bg-white border-gray-200 text-gray-800 space-y-1.5 shadow-sm';
+      banner.innerHTML = `
+        <div class="flex items-center justify-between border-b pb-2 mb-1">
+          <strong class="text-gray-900 flex items-center gap-1.5"><i class="fa-solid fa-network-wired text-brand-600"></i> Relatório de Conexão Supabase:</strong>
+          <button onclick="document.getElementById('supabase-diag-banner').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-sm">&times;</button>
+        </div>
+        ${reports.join('<br>')}
+      `;
     }
 
     function confirmDeleteProduct(productId) {
