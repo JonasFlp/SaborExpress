@@ -1049,8 +1049,8 @@
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
         osc.connect(gain);
@@ -1073,14 +1073,15 @@
 
       if (_supabase) {
         try {
-          // 1. Carregar Configurações Globais da Loja (store_settings)
-          const { data: dbSettings, error: setErr } = await _supabase
+          // 1. Carregar Configurações Globais da Loja sem depender de id estático 'main'
+          const { data: dbSettingsList, error: setErr } = await _supabase
             .from('store_settings')
             .select('*')
-            .eq('id', 'main')
-            .maybeSingle();
+            .limit(1);
 
-          if (!setErr && dbSettings) {
+          if (!setErr && dbSettingsList && dbSettingsList.length > 0) {
+            const dbSettings = dbSettingsList[0];
+            window._storeSettingsId = dbSettings.id; // Guarda o ID real da linha no banco
             state.settings = {
               ...state.settings,
               isOpen: dbSettings.is_open ?? state.settings.isOpen,
@@ -1185,7 +1186,7 @@
     function subscribeToRealtimeSync() {
       if (!_supabase) return;
 
-      // Always maintain periodic fallback polling to support mobile devices that pause WebSockets
+      // Inicia apenas uma única vez o intervalo de polling contínuo (fallback mobile)
       if (!window._realtimePollingInterval) {
         window._realtimePollingInterval = setInterval(() => {
           initData();
@@ -1193,6 +1194,10 @@
       }
 
       if (isCanvas) return;
+
+      // Inicia apenas uma vez a escuta Realtime para não derrubar a conexão por duplicidade
+      if (window._hasSubscribedRealtime) return;
+      window._hasSubscribedRealtime = true;
 
       try {
         _supabase
@@ -1202,7 +1207,9 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => initData())
           .subscribe();
-      } catch(e) {}
+      } catch(e) {
+        console.warn('Realtime fallback ativo via polling:', e);
+      }
     }
 
     function updateQuickToggleBtn() {
@@ -1228,15 +1235,21 @@
 
       if (_supabase) {
         try {
-          await _supabase.from('store_settings').upsert({
-            id: 'main',
+          const payload = {
             is_open: state.settings.isOpen,
             store_name: state.settings.storeName,
             delivery_time: state.settings.deliveryTime,
             delivery_fee: state.settings.deliveryFee,
             pix_key: state.settings.pixKey,
             updated_at: new Date().toISOString()
-          });
+          };
+
+          if (window._storeSettingsId) {
+            await _supabase.from('store_settings').update(payload).eq('id', window._storeSettingsId);
+          } else {
+            const { data } = await _supabase.from('store_settings').insert([payload]).select();
+            if (data && data[0]) window._storeSettingsId = data[0].id;
+          }
         } catch(e) {
           console.warn('Erro ao sincronizar status da loja com o Supabase:', e);
         }
@@ -1717,7 +1730,7 @@
 
       if (_supabase) {
         try {
-          const { data } = await _supabase.from('orders').insert([{
+          const orderPayload = {
             customer_name: customerName,
             customer_phone: customerPhone,
             delivery_type: orderType.toLowerCase(),
@@ -1727,15 +1740,25 @@
             discount_amount: totals.discount,
             total: newOrder.total,
             payment_method: paymentMethod.toLowerCase(),
-            items: newOrder.items,
             status: 'recebido'
-          }]).select();
+          };
+
+          // Tenta salvar com a coluna items
+          let { data, error } = await _supabase.from('orders').insert([{ ...orderPayload, items: newOrder.items }]).select();
+          
+          // Se falhar (caso a coluna items não exista), retenta sem ela para garantir a criação do pedido
+          if (error) {
+            const retry = await _supabase.from('orders').insert([orderPayload]).select();
+            if (!retry.error && retry.data) data = retry.data;
+          }
 
           if (data && data.length > 0) {
             newOrder.dbId = data[0].id;
             newOrder.id = data[0].id.substring(0, 6).toUpperCase();
           }
-        } catch (err) {}
+        } catch (err) {
+          console.warn('Erro ao inserir pedido no Supabase:', err);
+        }
       }
 
       state.orders.unshift(newOrder);
@@ -2382,8 +2405,14 @@
 
       try {
         const { data, error } = await _supabase.from('store_settings').select('*').limit(1);
-        if (error) reports.push(`<span class="text-red-600">❌ <strong>Tabela 'store_settings':</strong> ${error.message}</span>`);
-        else reports.push(`<span class="text-emerald-700">✅ <strong>Tabela 'store_settings':</strong> OK (Status sincronizado)</span>`);
+        if (error) {
+          reports.push(`<span class="text-red-600">❌ <strong>Tabela 'store_settings':</strong> ${error.message}</span>`);
+        } else if (data && data.length > 0) {
+          const statusText = data[0].is_open ? 'Loja Aberta' : 'Loja Fechada';
+          reports.push(`<span class="text-emerald-700">✅ <strong>Tabela 'store_settings':</strong> OK (Banco de Dados: ${statusText})</span>`);
+        } else {
+          reports.push(`<span class="text-amber-600">⚠️ <strong>Tabela 'store_settings':</strong> OK (registro ainda não criado)</span>`);
+        }
       } catch(e) {
         reports.push(`<span class="text-red-600">❌ <strong>Tabela 'store_settings':</strong> Falha de rede: ${e.message}</span>`);
       }
@@ -2490,15 +2519,21 @@
 
       if (_supabase) {
         try {
-          await _supabase.from('store_settings').upsert({
-            id: 'main',
+          const payload = {
             is_open: state.settings.isOpen,
             store_name: state.settings.storeName,
             delivery_time: state.settings.deliveryTime,
             delivery_fee: state.settings.deliveryFee,
             pix_key: state.settings.pixKey,
             updated_at: new Date().toISOString()
-          });
+          };
+
+          if (window._storeSettingsId) {
+            await _supabase.from('store_settings').update(payload).eq('id', window._storeSettingsId);
+          } else {
+            const { data } = await _supabase.from('store_settings').insert([payload]).select();
+            if (data && data[0]) window._storeSettingsId = data[0].id;
+          }
         } catch(err) {
           console.warn('Erro ao salvar store_settings no Supabase:', err);
         }
