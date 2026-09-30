@@ -142,6 +142,12 @@
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Quick Store Status Toggle (1-Click) -->
+          <button id="btn-quick-toggle-store" onclick="toggleStoreStatusQuick()" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span id="btn-quick-toggle-text">Loja Aberta</span>
+          </button>
+
           <button onclick="testSupabaseConnection()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
             <i class="fa-solid fa-network-wired"></i>
             <span class="hidden sm:inline">Diagnóstico</span>
@@ -149,7 +155,7 @@
           <span id="merchant-email-badge" class="hidden md:inline-block text-xs font-semibold bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">
             admin@restaurante.com
           </span>
-          <button onclick="handleMerchantLogout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+          <button onclick="handleMerchantLogout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
             <i class="fa-solid fa-right-from-bracket"></i>
             <span>Sair</span>
           </button>
@@ -1036,6 +1042,24 @@
       isMerchantAuthenticated: false
     };
 
+    // Audio cue for new incoming orders
+    function playOrderNotificationSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.45);
+      } catch(e) {}
+    }
+
     async function initData() {
       state.isMerchantAuthenticated = localStorage.getItem('sb_merchant_session') === 'true';
 
@@ -1049,7 +1073,26 @@
 
       if (_supabase) {
         try {
-          // 1. Carregar Categorias
+          // 1. Carregar Configurações Globais da Loja (store_settings)
+          const { data: dbSettings, error: setErr } = await _supabase
+            .from('store_settings')
+            .select('*')
+            .eq('id', 'main')
+            .maybeSingle();
+
+          if (!setErr && dbSettings) {
+            state.settings = {
+              ...state.settings,
+              isOpen: dbSettings.is_open ?? state.settings.isOpen,
+              storeName: dbSettings.store_name || state.settings.storeName,
+              deliveryTime: dbSettings.delivery_time || state.settings.deliveryTime,
+              deliveryFee: dbSettings.delivery_fee !== null ? parseFloat(dbSettings.delivery_fee) : state.settings.deliveryFee,
+              pixKey: dbSettings.pix_key || state.settings.pixKey
+            };
+            saveDataLocally('settings');
+          }
+
+          // 2. Carregar Categorias
           const { data: dbCategories, error: catErr } = await _supabase.from('categories').select('*');
           if (!catErr && dbCategories && dbCategories.length > 0) {
             state.categories = dbCategories.map(c => ({
@@ -1061,7 +1104,7 @@
             saveDataLocally('categories');
           }
 
-          // 2. Carregar Produtos
+          // 3. Carregar Produtos
           const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
           if (!prodErr && dbProducts && dbProducts.length > 0) {
             state.products = dbProducts.map(p => ({
@@ -1078,11 +1121,18 @@
             saveDataLocally('products');
           }
 
-          // 3. Carregar Pedidos
+          // 4. Carregar Pedidos
           const { data: dbOrders } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
           if (dbOrders && dbOrders.length > 0) {
             const mappedDb = dbOrders.map(o => {
               const matched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
+              let orderItems = [];
+              if (o.items && Array.isArray(o.items) && o.items.length > 0) {
+                orderItems = o.items;
+              } else if (matched && matched.items) {
+                orderItems = matched.items;
+              }
+
               return {
                 id: o.id.substring(0, 6).toUpperCase(),
                 dbId: o.id,
@@ -1093,7 +1143,7 @@
                 orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
                 paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
                 cashChange: o.change_for,
-                items: matched ? matched.items : [],
+                items: orderItems,
                 subtotal: parseFloat(o.subtotal || 0),
                 deliveryFee: parseFloat(o.delivery_fee || 0),
                 discount: parseFloat(o.discount_amount || 0),
@@ -1102,6 +1152,7 @@
               };
             });
 
+            const previousCount = state.orders ? state.orders.length : 0;
             const combinedMap = new Map();
             mappedDb.forEach(item => combinedMap.set(item.dbId || item.id, item));
             localOrders.forEach(item => {
@@ -1111,6 +1162,11 @@
 
             state.orders = Array.from(combinedMap.values());
             saveDataLocally('orders');
+
+            if (state.isMerchantAuthenticated && previousCount > 0 && state.orders.length > previousCount) {
+              playOrderNotificationSound();
+              showToast('🔔 Novo pedido recebido!', 'info');
+            }
           } else {
             state.orders = localOrders;
           }
@@ -1123,20 +1179,20 @@
 
       populateProductCategorySelect();
       checkSessionAndRoute();
-      subscribeToRealtimeSync();
+      updateQuickToggleBtn();
     }
 
     function subscribeToRealtimeSync() {
       if (!_supabase) return;
 
-      if (isCanvas) {
-        if (!window._canvasPollingInterval) {
-          window._canvasPollingInterval = setInterval(() => {
-            initData();
-          }, 4000);
-        }
-        return;
+      // Always maintain periodic fallback polling to support mobile devices that pause WebSockets
+      if (!window._realtimePollingInterval) {
+        window._realtimePollingInterval = setInterval(() => {
+          initData();
+        }, 4000);
       }
+
+      if (isCanvas) return;
 
       try {
         _supabase
@@ -1144,12 +1200,49 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => initData())
           .subscribe();
-      } catch(e) {
-        if (!window._canvasPollingInterval) {
-          window._canvasPollingInterval = setInterval(() => initData(), 4000);
+      } catch(e) {}
+    }
+
+    function updateQuickToggleBtn() {
+      const btn = document.getElementById('btn-quick-toggle-store');
+      const text = document.getElementById('btn-quick-toggle-text');
+      if (!btn || !text) return;
+
+      if (state.settings.isOpen) {
+        btn.className = "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow border bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30";
+        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>Loja Aberta</span>`;
+      } else {
+        btn.className = "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow border bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30";
+        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span>Loja Fechada</span>`;
+      }
+    }
+
+    async function toggleStoreStatusQuick() {
+      state.settings.isOpen = !state.settings.isOpen;
+      saveDataLocally('settings');
+      updateQuickToggleBtn();
+      renderClientBanner();
+      renderProducts();
+
+      if (_supabase) {
+        try {
+          await _supabase.from('store_settings').upsert({
+            id: 'main',
+            is_open: state.settings.isOpen,
+            store_name: state.settings.storeName,
+            delivery_time: state.settings.deliveryTime,
+            delivery_fee: state.settings.deliveryFee,
+            pix_key: state.settings.pixKey,
+            updated_at: new Date().toISOString()
+          });
+        } catch(e) {
+          console.warn('Erro ao sincronizar status da loja com o Supabase:', e);
         }
       }
+
+      showToast(`Status alterado: ${state.settings.isOpen ? 'Loja Aberta' : 'Loja Fechada'}`, 'success');
     }
 
     function saveDataLocally(key) {
@@ -1179,6 +1272,7 @@
 
         renderAdminDashboard();
         renderAdminOrders();
+        updateQuickToggleBtn();
       } else {
         viewMerchant.classList.add('hidden');
         merchantHeader.classList.add('hidden');
@@ -1633,6 +1727,7 @@
             discount_amount: totals.discount,
             total: newOrder.total,
             payment_method: paymentMethod.toLowerCase(),
+            items: newOrder.items,
             status: 'recebido'
           }]).select();
 
@@ -2285,6 +2380,14 @@
         reports.push(`<span class="text-red-600">❌ <strong>Tabela 'orders':</strong> Falha de rede: ${e.message}</span>`);
       }
 
+      try {
+        const { data, error } = await _supabase.from('store_settings').select('*').limit(1);
+        if (error) reports.push(`<span class="text-red-600">❌ <strong>Tabela 'store_settings':</strong> ${error.message}</span>`);
+        else reports.push(`<span class="text-emerald-700">✅ <strong>Tabela 'store_settings':</strong> OK (Status sincronizado)</span>`);
+      } catch(e) {
+        reports.push(`<span class="text-red-600">❌ <strong>Tabela 'store_settings':</strong> Falha de rede: ${e.message}</span>`);
+      }
+
       banner.className = 'p-4 rounded-2xl border text-xs font-semibold bg-white border-gray-200 text-gray-800 space-y-1.5 shadow-sm';
       banner.innerHTML = `
         <div class="flex items-center justify-between border-b pb-2 mb-1">
@@ -2365,7 +2468,7 @@
       document.getElementById('setting-admin-email').value = state.settings.adminEmail;
     }
 
-    function handleSaveSettings(e) {
+    async function handleSaveSettings(e) {
       e.preventDefault();
       state.settings.storeName = document.getElementById('setting-store-name').value.trim();
       state.settings.isOpen = document.getElementById('setting-store-status').value === 'OPEN';
@@ -2381,7 +2484,27 @@
       }
 
       saveDataLocally('settings');
-      showToast('Configurações salvas!', 'success');
+      updateQuickToggleBtn();
+      renderClientBanner();
+      renderProducts();
+
+      if (_supabase) {
+        try {
+          await _supabase.from('store_settings').upsert({
+            id: 'main',
+            is_open: state.settings.isOpen,
+            store_name: state.settings.storeName,
+            delivery_time: state.settings.deliveryTime,
+            delivery_fee: state.settings.deliveryFee,
+            pix_key: state.settings.pixKey,
+            updated_at: new Date().toISOString()
+          });
+        } catch(err) {
+          console.warn('Erro ao salvar store_settings no Supabase:', err);
+        }
+      }
+
+      showToast('Configurações salvas e sincronizadas na nuvem!', 'success');
     }
 
     function renderAdminCustomers() {
@@ -2439,6 +2562,7 @@
     window.onload = function() {
       initData();
       updateCartUI();
+      subscribeToRealtimeSync();
     };
   </script>
 </body>
