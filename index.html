@@ -1042,6 +1042,8 @@
       isMerchantAuthenticated: false
     };
 
+    let activeOrderChannel = null;
+
     // Audio cue for new incoming orders
     function playOrderNotificationSound() {
       try {
@@ -1073,7 +1075,7 @@
 
       if (_supabase) {
         try {
-          // 1. Carregar Configurações Globais da Loja sem depender de id estático 'main'
+          // 1. Carregar Configurações Globais da Loja
           const { data: dbSettingsList, error: setErr } = await _supabase
             .from('store_settings')
             .select('*')
@@ -1081,7 +1083,7 @@
 
           if (!setErr && dbSettingsList && dbSettingsList.length > 0) {
             const dbSettings = dbSettingsList[0];
-            window._storeSettingsId = dbSettings.id; // Guarda o ID real da linha no banco
+            window._storeSettingsId = dbSettings.id;
             state.settings = {
               ...state.settings,
               isOpen: dbSettings.is_open ?? state.settings.isOpen,
@@ -1181,28 +1183,40 @@
       populateProductCategorySelect();
       checkSessionAndRoute();
       updateQuickToggleBtn();
+
+      // Atualiza modais abertos no cliente
+      const trackModal = document.getElementById('modal-track');
+      if (trackModal && !trackModal.classList.contains('hidden')) {
+        const currentTrackedId = document.getElementById('track-order-id')?.innerText.replace('#', '');
+        if (currentTrackedId) openTrackModal(currentTrackedId);
+      }
+
+      const historyModal = document.getElementById('modal-history');
+      if (historyModal && !historyModal.classList.contains('hidden')) {
+        renderOrderHistory();
+      }
     }
 
     function subscribeToRealtimeSync() {
       if (!_supabase) return;
 
-      // Inicia apenas uma única vez o intervalo de polling contínuo (fallback mobile)
       if (!window._realtimePollingInterval) {
         window._realtimePollingInterval = setInterval(() => {
           initData();
-        }, 4000);
+        }, 3000);
       }
 
       if (isCanvas) return;
 
-      // Inicia apenas uma vez a escuta Realtime para não derrubar a conexão por duplicidade
       if (window._hasSubscribedRealtime) return;
       window._hasSubscribedRealtime = true;
 
       try {
         _supabase
           .channel('public:sync_all')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => initData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+            initData();
+          })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => initData())
@@ -1251,7 +1265,7 @@
             if (data && data[0]) window._storeSettingsId = data[0].id;
           }
         } catch(e) {
-          console.warn('Erro ao sincronizar status da loja com o Supabase:', e);
+          console.warn('Erro ao sincronizar status da loja:', e);
         }
       }
 
@@ -1299,7 +1313,6 @@
       }
     }
 
-    // Keyboard shortcut (Ctrl + Shift + A) to open Merchant Login
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
         e.preventDefault();
@@ -1743,10 +1756,8 @@
             status: 'recebido'
           };
 
-          // Tenta salvar com a coluna items
           let { data, error } = await _supabase.from('orders').insert([{ ...orderPayload, items: newOrder.items }]).select();
           
-          // Se falhar (caso a coluna items não exista), retenta sem ela para garantir a criação do pedido
           if (error) {
             const retry = await _supabase.from('orders').insert([orderPayload]).select();
             if (!retry.error && retry.data) data = retry.data;
@@ -1779,8 +1790,11 @@
 
     function openTrackModal(orderId) {
       let order = null;
-      if (orderId) order = state.orders.find(o => o.id === orderId);
-      else order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
+      if (orderId) {
+        order = state.orders.find(o => o.id === orderId || o.dbId === orderId);
+      } else {
+        order = state.orders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || state.orders[0];
+      }
 
       if (!order) return showToast('Nenhum pedido recente.', 'info');
 
@@ -1797,43 +1811,81 @@
       ];
 
       steps.forEach(step => {
-        step.children[0].className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow";
-        step.children[1].className = "text-[10px] font-bold text-gray-400";
+        if (step && step.children.length >= 2) {
+          step.children[0].className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold shadow";
+          step.children[1].className = "text-[10px] font-bold text-gray-400";
+        }
       });
 
       let progressWidth = '0%';
       let activeIndex = 0;
 
-      if (order.status === 'RECEBIDO') activeIndex = 0;
-      else if (order.status === 'PREPARANDO') { progressWidth = '33%'; activeIndex = 1; }
-      else if (order.status === 'ENVIADO') { progressWidth = '66%'; activeIndex = 2; }
-      else if (order.status === 'ENTREGUE') { progressWidth = '100%'; activeIndex = 3; }
+      const statusUpper = (order.status || 'RECEBIDO').toUpperCase();
 
-      lineProgress.style.width = progressWidth;
+      if (statusUpper === 'RECEBIDO') activeIndex = 0;
+      else if (statusUpper === 'PREPARANDO') { progressWidth = '33%'; activeIndex = 1; }
+      else if (statusUpper === 'ENVIADO') { progressWidth = '66%'; activeIndex = 2; }
+      else if (statusUpper === 'ENTREGUE') { progressWidth = '100%'; activeIndex = 3; }
+
+      if (lineProgress) lineProgress.style.width = progressWidth;
 
       for (let i = 0; i <= activeIndex; i++) {
-        steps[i].children[0].className = "w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold shadow ring-4 ring-brand-100";
-        steps[i].children[1].className = "text-[10px] font-extrabold text-brand-600";
+        if (steps[i] && steps[i].children.length >= 2) {
+          steps[i].children[0].className = "w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold shadow ring-4 ring-brand-100";
+          steps[i].children[1].className = "text-[10px] font-extrabold text-brand-600";
+        }
       }
 
       const pixBox = document.getElementById('track-pix-box');
-      if (order.paymentMethod === 'PIX' && order.status === 'RECEBIDO') {
-        pixBox.classList.remove('hidden');
-        document.getElementById('track-pix-key').innerText = state.settings.pixKey;
-      } else {
-        pixBox.classList.add('hidden');
+      if (pixBox) {
+        if (order.paymentMethod === 'PIX' && statusUpper === 'RECEBIDO') {
+          pixBox.classList.remove('hidden');
+          const pixKeyEl = document.getElementById('track-pix-key');
+          if (pixKeyEl) pixKeyEl.innerText = state.settings.pixKey || 'contato@saborexpress.com';
+        } else {
+          pixBox.classList.add('hidden');
+        }
       }
 
       const itemsList = document.getElementById('track-items-list');
-      itemsList.innerHTML = (order.items || []).map(item => `
-        <div class="flex justify-between">
-          <span>${item.quantity}x ${item.product.name}</span>
-          <span>R$ ${(item.unitTotal * item.quantity).toFixed(2).replace('.', ',')}</span>
-        </div>
-      `).join('');
+      if (itemsList) {
+        itemsList.innerHTML = (order.items || []).map(item => `
+          <div class="flex justify-between">
+            <span>${item.quantity}x ${item.product ? item.product.name : 'Item'}</span>
+            <span>R$ ${((item.unitTotal || 0) * item.quantity).toFixed(2).replace('.', ',')}</span>
+          </div>
+        `).join('');
+      }
 
-      document.getElementById('modal-track').classList.remove('hidden');
-      document.getElementById('modal-track').classList.add('flex');
+      // Escuta dedicada de Realtime para o pedido que o celular está acompanhando no momento
+      if (_supabase && order.dbId && !isCanvas) {
+        if (activeOrderChannel) {
+          _supabase.removeChannel(activeOrderChannel);
+        }
+
+        activeOrderChannel = _supabase
+          .channel(`order_track_${order.dbId}`)
+          .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'orders', 
+            filter: `id=eq.${order.dbId}` 
+          }, (payload) => {
+            if (payload.new) {
+              const newStatus = (payload.new.status || 'RECEBIDO').toUpperCase();
+              order.status = newStatus;
+              showToast(`Status do pedido alterado para: ${newStatus}`, 'info');
+              openTrackModal(order.id);
+            }
+          })
+          .subscribe();
+      }
+
+      const modalTrack = document.getElementById('modal-track');
+      if (modalTrack) {
+        modalTrack.classList.remove('hidden');
+        modalTrack.classList.add('flex');
+      }
     }
 
     function closeTrackModal() {
@@ -1872,7 +1924,7 @@
           </div>
 
           <div class="space-y-1 text-xs text-gray-600">
-            ${(order.items || []).map(i => `<div>${i.quantity}x ${i.product.name}</div>`).join('')}
+            ${(order.items || []).map(i => `<div>${i.quantity}x ${i.product ? i.product.name : 'Item'}</div>`).join('')}
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-200">
