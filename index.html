@@ -72,7 +72,6 @@
       70% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
       100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
     }
-    /* Travar o overscroll no mobile para impedir que a tela de trás se mova */
     .overscroll-contain {
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
@@ -82,7 +81,7 @@
 <body class="min-h-screen flex flex-col custom-scrollbar antialiased selection:bg-brand-500 selection:text-white pt-16">
 
   <!-- ========================================================================= -->
-  <!-- PUBLIC CUSTOMER NAVBAR (FIXED ON SCREEN) -->
+  <!-- PUBLIC CUSTOMER NAVBAR (FIXED ON TOP) -->
   <!-- ========================================================================= -->
   <header id="public-header" class="bg-white/95 backdrop-blur-md border-b border-gray-100 fixed top-0 left-0 right-0 z-40 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -101,13 +100,13 @@
 
         <!-- Customer Utilities (Isolated to this device) -->
         <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Active Track Button: Only visible if THIS device placed an ongoing order -->
+          <!-- Active Track Button -->
           <button id="btn-active-track" onclick="openTrackModal()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2 pulse-ring">
             <i class="fa-solid fa-motorcycle text-sm"></i>
             <span class="hidden sm:inline">Acompanhar Pedido</span>
           </button>
 
-          <!-- History: Only shows orders placed from THIS device -->
+          <!-- History -->
           <button onclick="openHistoryModal()" class="p-2.5 text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition" title="Meus Pedidos">
             <i class="fa-solid fa-clock-rotate-left text-lg"></i>
           </button>
@@ -119,7 +118,7 @@
             <span id="cart-badge" class="bg-white text-brand-700 text-xs w-5 h-5 rounded-full flex items-center justify-center font-black">0</span>
           </button>
 
-          <!-- Direct Admin Access Trigger in Header (Easy access for mobile) -->
+          <!-- Direct Admin Access Trigger -->
           <button onclick="openMerchantLoginModal()" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition ml-1" title="Acesso Lojista">
             <i class="fa-solid fa-lock text-sm"></i>
           </button>
@@ -157,9 +156,11 @@
             <i class="fa-solid fa-network-wired"></i>
             <span class="hidden sm:inline">Diagnóstico</span>
           </button>
+          
           <span id="merchant-email-badge" class="hidden md:inline-block text-xs font-semibold bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">
             admin@restaurante.com
           </span>
+          
           <button onclick="handleMerchantLogout()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
             <i class="fa-solid fa-right-from-bracket"></i>
             <span>Sair</span>
@@ -209,7 +210,7 @@
     <!-- Search & Filters Section -->
     <div class="space-y-4">
       <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div class="relative w-full md:w-96">
+        <div class="relative w-full">
           <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
           <input type="text" id="input-search" oninput="renderProducts()" placeholder="Buscar hambúrguer, pizza, bebida..." class="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition shadow-sm">
         </div>
@@ -405,7 +406,7 @@
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Ícone (FontAwesome)</label>
               <input type="text" id="category-icon" required placeholder="fa-cake-candles, fa-burger, fa-pizza-slice" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
-              <span class="text-[10px] text-gray-400">Ex: fa-cake-candles (bolo), fa-burger, fa-pizza-slice, fa-wine-glass</span>
+              <span class="text-[10px] text-gray-400">Ex: fa-cake-candles, fa-burger, fa-pizza-slice, fa-wine-glass</span>
             </div>
 
             <div class="flex items-center gap-2 pt-2">
@@ -521,7 +522,8 @@
           </div>
         </div>
 
-        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md">
+        <div class="flex items-center justify-between pt-2">
+          <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md">
           Salvar Alterações
         </button>
       </form>
@@ -897,7 +899,7 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Preço (R$)</label>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Preço Base (R$)</label>
             <input type="number" id="prod-price" step="0.01" required placeholder="29.90" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
           </div>
         </div>
@@ -966,7 +968,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- FLOATING BOTTOM CART BAR (APPEARS DYNAMICALLY AS YOU SCROLL) -->
+  <!-- FLOATING BOTTOM CART BAR (APPEARS DYNAMICALLY WHILE SCROLLING) -->
   <!-- ========================================================================= -->
   <div id="floating-cart-bar" class="fixed bottom-5 left-4 right-4 z-40 max-w-md mx-auto transform translate-y-32 opacity-0 pointer-events-none transition-all duration-300">
     <button onclick="openCartDrawer()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-extrabold py-3.5 px-5 rounded-2xl shadow-2xl shadow-brand-600/40 flex items-center justify-between border border-white/20 transition">
@@ -1078,9 +1080,7 @@
 
     let activeOrderChannel = null;
 
-    // =========================================================================
-    // BODY SCROLL LOCK HELPER (Evita que o fundo role ao arrastar modais no iOS)
-    // =========================================================================
+    // Body scroll locking helper to prevent background scrolling on mobile
     let savedScrollY = 0;
 
     function checkAnyModalOpen() {
@@ -1121,9 +1121,7 @@
       }
     }
 
-    // =========================================================================
-    // ISOLATION HELPER: DEVICE-SPECIFIC ORDERS STORAGE
-    // =========================================================================
+    // Isolated device-level order management
     function getDeviceOrderIds() {
       try {
         return JSON.parse(localStorage.getItem('sb_device_order_ids')) || [];
@@ -1141,14 +1139,12 @@
       } catch (e) {}
     }
 
-    // Returns only the orders placed by THIS specific device/browser
     function getDeviceOrders() {
       const myIds = getDeviceOrderIds();
       if (!myIds || myIds.length === 0) return [];
       return (state.orders || []).filter(o => myIds.includes(o.id) || (o.dbId && myIds.includes(o.dbId)));
     }
 
-    // Audio cue for new incoming orders in Merchant panel
     function playOrderNotificationSound() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1177,7 +1173,7 @@
       state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
       state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
 
-      // Restaura o carrinho e cupom ativo salvos no aparelho do cliente
+      // Restore cart from device memory
       if (!window._cartInitialized) {
         try {
           state.cart = JSON.parse(localStorage.getItem('sb_cart')) || [];
@@ -1196,7 +1192,7 @@
 
       if (_supabase) {
         try {
-          // 1. Carregar Configurações Globais da Loja
+          // 1. Store settings
           const { data: dbSettingsList, error: setErr } = await _supabase
             .from('store_settings')
             .select('*')
@@ -1216,7 +1212,7 @@
             saveDataLocally('settings');
           }
 
-          // 2. Carregar Categorias
+          // 2. Categories
           const { data: dbCategories, error: catErr } = await _supabase.from('categories').select('*');
           if (!catErr && dbCategories && dbCategories.length > 0) {
             state.categories = dbCategories.map(c => ({
@@ -1228,7 +1224,7 @@
             saveDataLocally('categories');
           }
 
-          // 3. Carregar Produtos
+          // 3. Products
           const { data: dbProducts, error: prodErr } = await _supabase.from('products').select('*');
           if (!prodErr && dbProducts && dbProducts.length > 0) {
             state.products = dbProducts.map(p => ({
@@ -1245,51 +1241,51 @@
             saveDataLocally('products');
           }
 
-          // 4. Carregar Pedidos
-          const { data: dbOrders } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
-          if (dbOrders && dbOrders.length > 0) {
-            const mappedDb = dbOrders.map(o => {
-              const matched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
-              let orderItems = [];
-              if (o.items && Array.isArray(o.items) && o.items.length > 0) {
-                orderItems = o.items;
-              } else if (matched && matched.items) {
-                orderItems = matched.items;
-              }
-
-              return {
-                id: o.id.substring(0, 6).toUpperCase(),
-                dbId: o.id,
-                createdAt: o.created_at,
-                customerName: o.customer_name,
-                customerPhone: o.customer_phone,
-                address: o.delivery_address || 'Retirada',
-                orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
-                paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
-                cashChange: o.change_for,
-                items: orderItems,
-                subtotal: parseFloat(o.subtotal || 0),
-                deliveryFee: parseFloat(o.delivery_fee || 0),
-                discount: parseFloat(o.discount_amount || 0),
-                total: parseFloat(o.total || 0),
-                status: (o.status || 'recebido').toUpperCase()
-              };
-            });
-
+          // 4. Orders
+          const { data: dbOrders, error: ordErr } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+          if (!ordErr && Array.isArray(dbOrders)) {
             const previousCount = state.orders ? state.orders.length : 0;
-            const combinedMap = new Map();
-            mappedDb.forEach(item => combinedMap.set(item.dbId || item.id, item));
-            localOrders.forEach(item => {
-              const key = item.dbId || item.id;
-              if (!combinedMap.has(key)) combinedMap.set(key, item);
-            });
 
-            state.orders = Array.from(combinedMap.values());
-            saveDataLocally('orders');
+            if (dbOrders.length === 0) {
+              // Cloud table was purged or is empty: clear memory and local cache
+              state.orders = [];
+              localStorage.removeItem('sb_orders');
+            } else {
+              const mappedDb = dbOrders.map(o => {
+                const matched = localOrders.find(lo => lo.dbId === o.id || lo.id === o.id);
+                let orderItems = [];
+                if (o.items && Array.isArray(o.items) && o.items.length > 0) {
+                  orderItems = o.items;
+                } else if (matched && matched.items) {
+                  orderItems = matched.items;
+                }
 
-            if (state.isMerchantAuthenticated && previousCount > 0 && state.orders.length > previousCount) {
-              playOrderNotificationSound();
-              showToast('🔔 Novo pedido recebido!', 'info');
+                return {
+                  id: o.id.substring(0, 6).toUpperCase(),
+                  dbId: o.id,
+                  createdAt: o.created_at,
+                  customerName: o.customer_name,
+                  customerPhone: o.customer_phone,
+                  address: o.delivery_address || 'Retirada',
+                  orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
+                  paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
+                  cashChange: o.change_for !== undefined && o.change_for !== null ? o.change_for : (matched ? matched.cashChange : null),
+                  items: orderItems,
+                  subtotal: parseFloat(o.subtotal || 0),
+                  deliveryFee: parseFloat(o.delivery_fee || 0),
+                  discount: parseFloat(o.discount_amount || 0),
+                  total: parseFloat(o.total || 0),
+                  status: (o.status || 'recebido').toUpperCase()
+                };
+              });
+
+              state.orders = mappedDb;
+              saveDataLocally('orders');
+
+              if (state.isMerchantAuthenticated && previousCount > 0 && state.orders.length > previousCount) {
+                playOrderNotificationSound();
+                showToast('🔔 Novo pedido recebido!', 'info');
+              }
             }
           } else {
             state.orders = localOrders;
@@ -1305,7 +1301,7 @@
       checkSessionAndRoute();
       updateQuickToggleBtn();
 
-      // Atualiza modais abertos no cliente
+      // Refresh any open client modal with updated statuses
       const trackModal = document.getElementById('modal-track');
       if (trackModal && !trackModal.classList.contains('hidden')) {
         const currentTrackedId = document.getElementById('track-order-id')?.innerText.replace('#', '');
@@ -1339,6 +1335,7 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => initData())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons' }, () => initData())
           .subscribe();
       } catch(e) {
         console.warn('Realtime fallback ativo via polling:', e);
@@ -1389,6 +1386,33 @@
       }
 
       showToast(`Status alterado: ${state.settings.isOpen ? 'Loja Aberta' : 'Loja Fechada'}`, 'success');
+    }
+
+    function confirmClearTestData() {
+      openConfirmModal(
+        'Limpar Todos os Pedidos de Teste?',
+        'Isso apagará o histórico de pedidos e faturamento do banco de dados e do dispositivo. Os produtos e configurações permanecerão salvos.',
+        async () => {
+          state.orders = [];
+          localStorage.removeItem('sb_orders');
+          localStorage.removeItem('sb_device_order_ids');
+          localStorage.removeItem('sb_customer_info');
+
+          if (_supabase) {
+            try {
+              // Delete all test rows from orders
+              await _supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            } catch(e) {
+              console.warn('Erro ao limpar pedidos no Supabase:', e);
+            }
+          }
+
+          renderAdminDashboard();
+          renderAdminOrders();
+          renderClientBanner();
+          showToast('Todos os pedidos de teste foram limpos com sucesso!', 'success');
+        }
+      );
     }
 
     function saveDataLocally(key) {
@@ -1499,7 +1523,7 @@
         statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Loja Fechada`;
       }
 
-      // ISOLATION: Check if THIS device has any active (non-delivered) orders
+      // Check if THIS device placed an ongoing order
       const myOrders = getDeviceOrders();
       const myActiveOrder = myOrders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO');
       const trackBtn = document.getElementById('btn-active-track');
@@ -1714,7 +1738,7 @@
       const obs = document.getElementById('modal-prod-obs').value.trim();
       const unitTotal = state.activeModalProduct.price + selectedAdds.reduce((acc, a) => acc + a.price, 0);
 
-      // Se estiver editando um item já existente no carrinho
+      // Editing an existing cart item
       if (state.editingCartItemId) {
         const itemIdx = state.cart.findIndex(i => i.cartItemId === state.editingCartItemId);
         if (itemIdx !== -1) {
@@ -1736,7 +1760,7 @@
         }
       }
 
-      // Adicionando um novo item ao carrinho
+      // Adding new cart item
       const cartItem = {
         cartItemId: Date.now().toString(),
         product: state.activeModalProduct,
@@ -1816,7 +1840,7 @@
 
       const totals = calculateCartTotals();
 
-      // Atualiza a Barra Flutuante de Carrinho no Rodapé
+      // Dynamic floating cart bar at bottom
       const floatingBar = document.getElementById('floating-cart-bar');
       const floatingBadge = document.getElementById('floating-cart-badge');
       const floatingTotal = document.getElementById('floating-cart-total');
@@ -1909,7 +1933,7 @@
     function openCheckoutModal() {
       if (state.cart.length === 0) return;
       
-      // Auto-prefill customer details from this device's memory if saved
+      // Auto-prefill customer info on this device
       try {
         const savedCustomer = JSON.parse(localStorage.getItem('sb_customer_info'));
         if (savedCustomer) {
@@ -1965,7 +1989,6 @@
         address = `${street}, Nº ${num} - ${neigh} ${comp ? '(' + comp + ')' : ''}`;
       }
 
-      // Captura e formata o troco se for em dinheiro
       let rawCashChange = null;
       if (paymentMethod === 'CASH') {
         const cashInput = document.getElementById('chk-cash-change');
@@ -1974,7 +1997,6 @@
         }
       }
 
-      // Save customer details on THIS device for quick autofill next time
       try {
         localStorage.setItem('sb_customer_info', JSON.stringify({
           name: customerName,
@@ -2038,7 +2060,7 @@
         }
       }
 
-      // ISOLATION: Register this order specifically to THIS client device
+      // Associate this order to THIS client device
       addDeviceOrderId(newOrder.id, newOrder.dbId);
 
       state.orders.unshift(newOrder);
@@ -2066,7 +2088,6 @@
       if (orderId) {
         order = state.orders.find(o => o.id === orderId || o.dbId === orderId);
       } else {
-        // If not passing an ID, strictly look for an active order placed by THIS device
         order = myOrders.find(o => o.status !== 'ENTREGUE' && o.status !== 'CANCELADO') || myOrders[0];
       }
 
@@ -2131,7 +2152,7 @@
         `).join('');
       }
 
-      // Escuta dedicada de Realtime para o pedido que o celular está acompanhando no momento
+      // Realtime listener for active tracking modal
       if (_supabase && order.dbId && !isCanvas) {
         if (activeOrderChannel) {
           _supabase.removeChannel(activeOrderChannel);
@@ -2184,8 +2205,6 @@
 
     function renderOrderHistory() {
       const container = document.getElementById('history-list-container');
-      
-      // ISOLATION: Filter orders so customer only sees their own device orders
       const myOrders = getDeviceOrders();
 
       if (myOrders.length === 0) {
@@ -2322,7 +2341,7 @@
 
         return `
           <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-            <!-- Cabeçalho do Card -->
+            <!-- Header do Card -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
               <div class="flex items-center gap-3">
                 <span class="font-extrabold text-base text-gray-900">#${order.id}</span>
@@ -2331,7 +2350,7 @@
               </div>
 
               <div class="flex items-center gap-3">
-                <!-- Botão de Impressão de Cupom para Cozinha -->
+                <!-- Botão de Impressão Térmica de Cupom -->
                 <button onclick="printOrderTicket('${order.id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow flex items-center gap-1.5" title="Imprimir Cupom da Cozinha">
                   <i class="fa-solid fa-print text-amber-400"></i>
                   <span>Imprimir Cupom</span>
@@ -2358,7 +2377,7 @@
                 <p class="text-gray-600"><i class="fa-solid fa-location-dot text-brand-600 mr-1"></i> ${order.address}</p>
                 <p class="text-gray-600"><i class="fa-solid fa-truck text-brand-600 mr-1"></i> Tipo: <strong>${order.orderType === 'DELIVERY' ? 'Entrega' : 'Retirada no Balcão'}</strong></p>
                 
-                <!-- Forma de Pagamento e Destaque do Troco Calculado -->
+                <!-- Forma de Pagamento e Detalhe de Troco Calculado -->
                 <div class="pt-1">
                   <p class="text-gray-700">
                     <i class="fa-solid fa-wallet text-brand-600 mr-1"></i> Pagamento: <strong>${order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod}</strong>
@@ -2748,7 +2767,6 @@
       populateProductCategorySelect();
       document.getElementById('modal-admin-prod-title').innerText = 'Novo Produto';
       
-      // Limpa a lista de adicionais para novo produto
       const addList = document.getElementById('admin-prod-additionals-list');
       if (addList) addList.innerHTML = '';
 
@@ -2763,7 +2781,6 @@
       updateBodyScrollLock();
     }
 
-    // Adiciona uma linha de complemento (nome + preço) no formulário do produto
     function addAdminProductAdditionalRow(name = '', price = '') {
       const container = document.getElementById('admin-prod-additionals-list');
       if (!container) return;
@@ -2799,7 +2816,6 @@
       document.getElementById('prod-desc').value = p.description || '';
       document.getElementById('prod-featured').checked = !!p.featured;
 
-      // Carrega os complementos existentes do produto no formulário
       const addList = document.getElementById('admin-prod-additionals-list');
       if (addList) {
         addList.innerHTML = '';
@@ -2833,7 +2849,6 @@
       const description = document.getElementById('prod-desc').value.trim();
       const featured = document.getElementById('prod-featured').checked;
 
-      // Coleta todos os complementos configurados no formulário
       const additionals = [];
       document.querySelectorAll('#admin-prod-additionals-list .admin-add-row').forEach(row => {
         const nameInput = row.querySelector('.admin-add-name');
