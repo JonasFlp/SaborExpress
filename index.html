@@ -1180,6 +1180,9 @@
                 orderItems = matched.items;
               }
 
+              // Preserva o valor de troco vindo do Supabase ou do registro local
+              const resolvedCashChange = o.change_for || o.cash_change || (matched ? matched.cashChange : null);
+
               return {
                 id: o.id.substring(0, 6).toUpperCase(),
                 dbId: o.id,
@@ -1189,7 +1192,7 @@
                 address: o.delivery_address || 'Retirada',
                 orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
                 paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
-                cashChange: o.change_for,
+                cashChange: resolvedCashChange,
                 items: orderItems,
                 subtotal: parseFloat(o.subtotal || 0),
                 deliveryFee: parseFloat(o.delivery_fee || 0),
@@ -1787,6 +1790,15 @@
         address = `${street}, Nº ${num} - ${neigh} ${comp ? '(' + comp + ')' : ''}`;
       }
 
+      // Captura e formata o troco se for em dinheiro
+      let rawCashChange = null;
+      if (paymentMethod === 'CASH') {
+        const cashInput = document.getElementById('chk-cash-change');
+        if (cashInput && cashInput.value) {
+          rawCashChange = cashInput.value.trim().replace(',', '.');
+        }
+      }
+
       // Save customer details on THIS device for quick autofill next time
       try {
         localStorage.setItem('sb_customer_info', JSON.stringify({
@@ -1810,7 +1822,7 @@
         address,
         orderType,
         paymentMethod,
-        cashChange: paymentMethod === 'CASH' ? document.getElementById('chk-cash-change').value : null,
+        cashChange: rawCashChange,
         items: [...state.cart],
         subtotal: totals.subtotal,
         deliveryFee: orderType === 'DELIVERY' ? totals.deliveryFee : 0,
@@ -1831,6 +1843,7 @@
             discount_amount: totals.discount,
             total: newOrder.total,
             payment_method: paymentMethod.toLowerCase(),
+            change_for: newOrder.cashChange,
             status: 'recebido'
           };
 
@@ -2161,8 +2174,31 @@
               <div class="space-y-2">
                 <p class="font-bold text-gray-800"><i class="fa-solid fa-user text-brand-600 mr-1"></i> ${order.customerName} (${order.customerPhone})</p>
                 <p class="text-gray-600"><i class="fa-solid fa-location-dot text-brand-600 mr-1"></i> ${order.address}</p>
-                <p class="text-gray-600"><i class="fa-solid fa-wallet text-brand-600 mr-1"></i> Pagamento: <strong>${order.paymentMethod}</strong> ${order.cashChange ? '(Troco p/ R$ '+order.cashChange+')' : ''}</p>
                 <p class="text-gray-600"><i class="fa-solid fa-truck text-brand-600 mr-1"></i> Tipo: <strong>${order.orderType === 'DELIVERY' ? 'Entrega' : 'Retirada no Balcão'}</strong></p>
+                
+                <!-- Forma de Pagamento e Destaque do Troco Calculado -->
+                <div class="pt-1">
+                  <p class="text-gray-700">
+                    <i class="fa-solid fa-wallet text-brand-600 mr-1"></i> Pagamento: <strong>${order.paymentMethod === 'CASH' ? 'Dinheiro' : order.paymentMethod}</strong>
+                  </p>
+                  ${order.paymentMethod === 'CASH' ? (
+                    order.cashChange ? `
+                      <div class="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 font-bold space-y-0.5">
+                        <div class="flex items-center gap-1.5 text-xs">
+                          <i class="fa-solid fa-money-bill-wave text-amber-600"></i>
+                          <span>Troco para: <strong>R$ ${parseFloat(order.cashChange).toFixed(2).replace('.', ',')}</strong></span>
+                        </div>
+                        <div class="text-[11px] text-amber-700 font-extrabold pl-5">
+                          ➔ Levar de troco: <span class="text-emerald-700 text-xs">R$ ${Math.max(0, parseFloat(order.cashChange) - (order.total || 0)).toFixed(2).replace('.', ',')}</span>
+                        </div>
+                      </div>
+                    ` : `
+                      <span class="inline-block mt-1 text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-semibold">
+                        Não precisa de troco (valor exato)
+                      </span>
+                    `
+                  ) : ''}
+                </div>
               </div>
 
               <!-- Resumo dos Itens, Complementos e Observações -->
@@ -2230,6 +2266,8 @@
         `;
       }).join('');
 
+      const cashChangeDiff = order.cashChange ? Math.max(0, parseFloat(order.cashChange) - (order.total || 0)) : 0;
+
       const ticketContent = `
         <!DOCTYPE html>
         <html>
@@ -2264,7 +2302,13 @@
           <div><strong>TEL:</strong> ${order.customerPhone}</div>
           <div><strong>TIPO:</strong> ${order.orderType === 'DELIVERY' ? 'ENTREGA' : 'RETIRADA NO BALCÃO'}</div>
           <div style="font-size: 11px;"><strong>ENDEREÇO:</strong> ${order.address}</div>
-          <div><strong>PAGAMENTO:</strong> ${order.paymentMethod} ${order.cashChange ? '(Troco: R$ '+order.cashChange+')' : ''}</div>
+          <div><strong>PAGAMENTO:</strong> ${order.paymentMethod === 'CASH' ? 'DINHEIRO' : order.paymentMethod}</div>
+          ${order.cashChange ? `
+            <div style="font-size: 11px; font-weight: bold; background: #eee; padding: 2px 4px; margin-top: 2px;">
+              TROCO PARA: R$ ${parseFloat(order.cashChange).toFixed(2).replace('.', ',')}<br>
+              LEVAR DE TROCO: R$ ${cashChangeDiff.toFixed(2).replace('.', ',')}
+            </div>
+          ` : ''}
           
           <div class="line"></div>
           <div class="text-bold text-center">ITENS DO PEDIDO</div>
