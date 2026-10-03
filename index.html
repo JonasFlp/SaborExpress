@@ -646,7 +646,7 @@
         </div>
 
         <button onclick="addCurrentProductToCart()" class="flex-grow bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-md shadow-brand-600/20 flex items-center justify-between">
-          <span>Adicionar</span>
+          <span id="modal-prod-btn-label">Adicionar</span>
           <span id="modal-prod-total-btn">R$ 0,00</span>
         </button>
       </div>
@@ -1077,7 +1077,8 @@
       currentCategory: 'ALL',
       activeModalProduct: null,
       modalQty: 1,
-      isMerchantAuthenticated: false
+      isMerchantAuthenticated: false,
+      editingCartItemId: null
     };
 
     let activeOrderChannel = null;
@@ -1599,31 +1600,49 @@
       renderProducts();
     }
 
-    function openProductDetailModal(productId) {
+    function openProductDetailModal(productId, isEditing = false, cartItem = null) {
       const product = state.products.find(p => p.id === productId);
       if (!product) return;
 
       state.activeModalProduct = product;
-      state.modalQty = 1;
+
+      if (isEditing && cartItem) {
+        state.editingCartItemId = cartItem.cartItemId;
+        state.modalQty = cartItem.quantity || 1;
+        document.getElementById('modal-prod-obs').value = cartItem.observations || '';
+        const btnLabel = document.getElementById('modal-prod-btn-label');
+        if (btnLabel) btnLabel.innerText = 'Salvar Alterações';
+      } else {
+        state.editingCartItemId = null;
+        state.modalQty = 1;
+        document.getElementById('modal-prod-obs').value = '';
+        const btnLabel = document.getElementById('modal-prod-btn-label');
+        if (btnLabel) btnLabel.innerText = 'Adicionar';
+      }
 
       document.getElementById('modal-prod-img').src = product.image;
       document.getElementById('modal-prod-title').innerText = product.name;
       document.getElementById('modal-prod-desc').innerText = product.description || '';
       document.getElementById('modal-prod-price').innerText = `R$ ${product.price.toFixed(2).replace('.', ',')}`;
-      document.getElementById('modal-prod-qty').innerText = '1';
-      document.getElementById('modal-prod-obs').value = '';
+      document.getElementById('modal-prod-qty').innerText = state.modalQty;
 
       const addContainer = document.getElementById('modal-prod-additionals');
       if (product.additionals && product.additionals.length > 0) {
-        addContainer.innerHTML = product.additionals.map((add, idx) => `
-          <label class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition border border-gray-100">
-            <div class="flex items-center gap-2">
-              <input type="checkbox" data-idx="${idx}" onchange="updateModalTotal()" class="modal-add-checkbox rounded text-brand-600 focus:ring-brand-500 w-4 h-4">
-              <span class="text-xs font-semibold text-gray-800">${add.name}</span>
-            </div>
-            <span class="text-xs font-bold text-gray-600">+ R$ ${add.price.toFixed(2).replace('.', ',')}</span>
-          </label>
-        `).join('');
+        addContainer.innerHTML = product.additionals.map((add, idx) => {
+          const isChecked = isEditing && cartItem && cartItem.selectedAdditionals
+            ? cartItem.selectedAdditionals.some(a => a.name === add.name)
+            : false;
+
+          return `
+            <label class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition border border-gray-100">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" data-idx="${idx}" ${isChecked ? 'checked' : ''} onchange="updateModalTotal()" class="modal-add-checkbox rounded text-brand-600 focus:ring-brand-500 w-4 h-4">
+                <span class="text-xs font-semibold text-gray-800">${add.name}</span>
+              </div>
+              <span class="text-xs font-bold text-gray-600">+ R$ ${add.price.toFixed(2).replace('.', ',')}</span>
+            </label>
+          `;
+        }).join('');
       } else {
         addContainer.innerHTML = `<p class="text-xs text-gray-400 italic">Sem adicionais para este item.</p>`;
       }
@@ -1634,10 +1653,27 @@
       updateBodyScrollLock();
     }
 
+    function editCartItem(cartItemId) {
+      const cartItem = state.cart.find(i => i.cartItemId === cartItemId);
+      if (!cartItem) return;
+
+      closeCartDrawer();
+      openProductDetailModal(cartItem.product.id, true, cartItem);
+    }
+
     function closeProductModal() {
+      const wasEditing = !!state.editingCartItemId;
+      state.editingCartItemId = null;
+      const btnLabel = document.getElementById('modal-prod-btn-label');
+      if (btnLabel) btnLabel.innerText = 'Adicionar';
+
       document.getElementById('modal-product').classList.add('hidden');
       document.getElementById('modal-product').classList.remove('flex');
       updateBodyScrollLock();
+
+      if (wasEditing) {
+        openCartDrawer();
+      }
     }
 
     function updateModalQty(delta) {
@@ -1656,7 +1692,9 @@
       checkboxes.forEach(cb => {
         if (cb.checked) {
           const idx = parseInt(cb.getAttribute('data-idx'));
-          additionalsTotal += state.activeModalProduct.additionals[idx].price;
+          if (state.activeModalProduct.additionals && state.activeModalProduct.additionals[idx]) {
+            additionalsTotal += state.activeModalProduct.additionals[idx].price;
+          }
         }
       });
 
@@ -1672,19 +1710,45 @@
       checkboxes.forEach(cb => {
         if (cb.checked) {
           const idx = parseInt(cb.getAttribute('data-idx'));
-          selectedAdds.push(state.activeModalProduct.additionals[idx]);
+          if (state.activeModalProduct.additionals && state.activeModalProduct.additionals[idx]) {
+            selectedAdds.push(state.activeModalProduct.additionals[idx]);
+          }
         }
       });
 
       const obs = document.getElementById('modal-prod-obs').value.trim();
+      const unitTotal = state.activeModalProduct.price + selectedAdds.reduce((acc, a) => acc + a.price, 0);
 
+      // Se estiver editando um item já existente no carrinho
+      if (state.editingCartItemId) {
+        const itemIdx = state.cart.findIndex(i => i.cartItemId === state.editingCartItemId);
+        if (itemIdx !== -1) {
+          state.cart[itemIdx] = {
+            ...state.cart[itemIdx],
+            product: state.activeModalProduct,
+            quantity: state.modalQty,
+            selectedAdditionals: selectedAdds,
+            observations: obs,
+            unitTotal: unitTotal
+          };
+          saveDataLocally('cart');
+          showToast('Item atualizado com sucesso!', 'success');
+          state.editingCartItemId = null;
+          closeProductModal();
+          openCartDrawer();
+          updateCartUI();
+          return;
+        }
+      }
+
+      // Adicionando um novo item ao carrinho
       const cartItem = {
         cartItemId: Date.now().toString(),
         product: state.activeModalProduct,
         quantity: state.modalQty,
         selectedAdditionals: selectedAdds,
         observations: obs,
-        unitTotal: state.activeModalProduct.price + selectedAdds.reduce((acc, a) => acc + a.price, 0)
+        unitTotal: unitTotal
       };
 
       state.cart.push(cartItem);
@@ -1728,9 +1792,15 @@
             <div class="flex-grow space-y-1">
               <div class="flex justify-between items-start">
                 <h4 class="font-bold text-xs text-gray-900">${item.product.name}</h4>
-                <button onclick="removeCartItem('${item.cartItemId}')" class="text-gray-400 hover:text-red-500 text-xs">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="editCartItem('${item.cartItemId}')" class="text-xs text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition" title="Editar item">
+                    <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                    <span class="text-[10px]">Editar</span>
+                  </button>
+                  <button onclick="removeCartItem('${item.cartItemId}')" class="text-gray-400 hover:text-red-500 p-1 text-xs transition" title="Remover item">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
               </div>
               
               ${item.selectedAdditionals.length > 0 ? `<p class="text-[10px] text-gray-500 font-medium">+ ${item.selectedAdditionals.map(a => a.name).join(', ')}</p>` : ''}
