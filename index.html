@@ -1718,7 +1718,26 @@
         `).join('');
       }
 
-      calculateCartTotals();
+      const totals = calculateCartTotals();
+
+      // Atualiza a Barra Flutuante de Carrinho no Rodapé
+      const floatingBar = document.getElementById('floating-cart-bar');
+      const floatingBadge = document.getElementById('floating-cart-badge');
+      const floatingTotal = document.getElementById('floating-cart-total');
+
+      if (totalItemsCount > 0 && !state.isMerchantAuthenticated) {
+        if (floatingBar) {
+          floatingBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+          floatingBar.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+        }
+        if (floatingBadge) floatingBadge.innerText = totalItemsCount;
+        if (floatingTotal) floatingTotal.innerText = `R$ ${totals.total.toFixed(2).replace('.', ',')}`;
+      } else {
+        if (floatingBar) {
+          floatingBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
+          floatingBar.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+        }
+      }
     }
 
     function changeCartQty(cartItemId, delta) {
