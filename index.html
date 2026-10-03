@@ -72,6 +72,11 @@
       70% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
       100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
     }
+    /* Travar o overscroll no mobile para impedir que a tela de trás se mova */
+    .overscroll-contain {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
   </style>
 </head>
 <body class="h-full flex flex-col custom-scrollbar antialiased selection:bg-brand-500 selection:text-white">
@@ -569,7 +574,7 @@
   <!-- ========================================================================= -->
 
   <!-- 1. MERCHANT LOGIN MODAL -->
-  <div id="modal-merchant-login" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+  <div id="modal-merchant-login" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8 space-y-6 relative">
       <button onclick="closeMerchantLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
 
@@ -604,7 +609,7 @@
   </div>
 
   <!-- 2. PRODUCT CUSTOMIZER MODAL -->
-  <div id="modal-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modal-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <div class="relative h-48 bg-gray-100">
         <img id="modal-prod-img" src="" alt="Produto" referrerpolicy="no-referrer" class="w-full h-full object-cover">
@@ -649,8 +654,8 @@
   </div>
 
   <!-- 3. SHOPPING CART DRAWER -->
-  <div id="drawer-cart" class="fixed inset-0 z-50 hidden">
-    <div onclick="closeCartDrawer()" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"></div>
+  <div id="drawer-cart" class="fixed inset-0 z-50 hidden overscroll-contain">
+    <div onclick="closeCartDrawer()" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity touch-none"></div>
     <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
       <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
         <div class="flex items-center gap-2">
@@ -703,7 +708,7 @@
   </div>
 
   <!-- 4. CHECKOUT MODAL -->
-  <div id="modal-checkout" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modal-checkout" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <h3 class="font-extrabold text-lg flex items-center gap-2">
@@ -796,7 +801,7 @@
   </div>
 
   <!-- 5. REALTIME TRACKING MODAL -->
-  <div id="modal-track" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modal-track" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <div>
@@ -861,7 +866,7 @@
   </div>
 
   <!-- 6. HISTORY MODAL -->
-  <div id="modal-history" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modal-history" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <h3 class="font-extrabold text-lg flex items-center gap-2">
@@ -874,7 +879,7 @@
   </div>
 
   <!-- 7. ADMIN CREATE/EDIT PRODUCT MODAL -->
-  <div id="modal-admin-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modal-admin-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
         <h3 id="modal-admin-prod-title" class="font-extrabold text-lg">Novo Produto</h3>
@@ -945,7 +950,7 @@
   </div>
 
   <!-- 8. CUSTOM CONFIRMATION MODAL -->
-  <div id="modal-confirm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modal-confirm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overscroll-contain">
     <div class="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl p-6 space-y-4">
       <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center text-xl font-bold">
         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -1060,6 +1065,49 @@
     };
 
     let activeOrderChannel = null;
+
+    // =========================================================================
+    // BODY SCROLL LOCK HELPER (Evita que o fundo role ao arrastar modais no iOS)
+    // =========================================================================
+    let savedScrollY = 0;
+
+    function checkAnyModalOpen() {
+      const modalIds = [
+        'modal-product',
+        'drawer-cart',
+        'modal-checkout',
+        'modal-track',
+        'modal-history',
+        'modal-admin-product',
+        'modal-merchant-login',
+        'modal-confirm'
+      ];
+      return modalIds.some(id => {
+        const el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+      });
+    }
+
+    function updateBodyScrollLock() {
+      const hasOpenModal = checkAnyModalOpen();
+      if (hasOpenModal && document.body.style.position !== 'fixed') {
+        savedScrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${savedScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+      } else if (!hasOpenModal && document.body.style.position === 'fixed') {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, savedScrollY);
+      }
+    }
 
     // =========================================================================
     // ISOLATION HELPER: DEVICE-SPECIFIC ORDERS STORAGE
@@ -1372,11 +1420,13 @@
       document.getElementById('form-merchant-login').reset();
       document.getElementById('modal-merchant-login').classList.remove('hidden');
       document.getElementById('modal-merchant-login').classList.add('flex');
+      updateBodyScrollLock();
     }
 
     function closeMerchantLoginModal() {
       document.getElementById('modal-merchant-login').classList.add('hidden');
       document.getElementById('modal-merchant-login').classList.remove('flex');
+      updateBodyScrollLock();
     }
 
     function handleMerchantLogin(e) {
@@ -1551,11 +1601,13 @@
       updateModalTotal();
       document.getElementById('modal-product').classList.remove('hidden');
       document.getElementById('modal-product').classList.add('flex');
+      updateBodyScrollLock();
     }
 
     function closeProductModal() {
       document.getElementById('modal-product').classList.add('hidden');
       document.getElementById('modal-product').classList.remove('flex');
+      updateBodyScrollLock();
     }
 
     function updateModalQty(delta) {
@@ -1613,10 +1665,12 @@
 
     function openCartDrawer() {
       document.getElementById('drawer-cart').classList.remove('hidden');
+      updateBodyScrollLock();
     }
 
     function closeCartDrawer() {
       document.getElementById('drawer-cart').classList.add('hidden');
+      updateBodyScrollLock();
     }
 
     function updateCartUI() {
@@ -1752,11 +1806,13 @@
       closeCartDrawer();
       document.getElementById('modal-checkout').classList.remove('hidden');
       document.getElementById('modal-checkout').classList.add('flex');
+      updateBodyScrollLock();
     }
 
     function closeCheckoutModal() {
       document.getElementById('modal-checkout').classList.add('hidden');
       document.getElementById('modal-checkout').classList.remove('flex');
+      updateBodyScrollLock();
     }
 
     function toggleOrderType(val) {
@@ -1982,23 +2038,27 @@
       if (modalTrack) {
         modalTrack.classList.remove('hidden');
         modalTrack.classList.add('flex');
+        updateBodyScrollLock();
       }
     }
 
     function closeTrackModal() {
       document.getElementById('modal-track').classList.add('hidden');
       document.getElementById('modal-track').classList.remove('flex');
+      updateBodyScrollLock();
     }
 
     function openHistoryModal() {
       renderOrderHistory();
       document.getElementById('modal-history').classList.remove('hidden');
       document.getElementById('modal-history').classList.add('flex');
+      updateBodyScrollLock();
     }
 
     function closeHistoryModal() {
       document.getElementById('modal-history').classList.add('hidden');
       document.getElementById('modal-history').classList.remove('flex');
+      updateBodyScrollLock();
     }
 
     function renderOrderHistory() {
@@ -2504,6 +2564,7 @@
         modal.classList.remove('flex');
         okBtn.onclick = null;
         cancelBtn.onclick = null;
+        updateBodyScrollLock();
       };
 
       okBtn.onclick = () => {
@@ -2515,6 +2576,7 @@
 
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      updateBodyScrollLock();
     }
 
     function renderAdminProductsTable() {
@@ -2570,11 +2632,13 @@
 
       document.getElementById('modal-admin-product').classList.remove('hidden');
       document.getElementById('modal-admin-product').classList.add('flex');
+      updateBodyScrollLock();
     }
 
     function closeAdminProductModal() {
       document.getElementById('modal-admin-product').classList.add('hidden');
       document.getElementById('modal-admin-product').classList.remove('flex');
+      updateBodyScrollLock();
     }
 
     // Adiciona uma linha de complemento (nome + preço) no formulário do produto
@@ -2627,6 +2691,7 @@
       document.getElementById('modal-admin-prod-title').innerText = 'Editar Produto';
       document.getElementById('modal-admin-product').classList.remove('hidden');
       document.getElementById('modal-admin-product').classList.add('flex');
+      updateBodyScrollLock();
     }
 
     async function handleSaveProduct(e) {
