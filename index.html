@@ -912,6 +912,24 @@
           <textarea id="prod-desc" rows="2" required placeholder="Ingredientes..." class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none resize-none"></textarea>
         </div>
 
+        <!-- Seção de Complementos / Adicionais para o Produto -->
+        <div class="border-t border-gray-100 pt-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 uppercase">Complementos / Adicionais</label>
+              <p class="text-[10px] text-gray-400">Opções extras que o cliente pode adicionar ao pedido</p>
+            </div>
+            <button type="button" onclick="addAdminProductAdditionalRow()" class="bg-brand-50 hover:bg-brand-100 text-brand-600 font-bold px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-plus text-[10px]"></i>
+              <span>Novo Complemento</span>
+            </button>
+          </div>
+
+          <div id="admin-prod-additionals-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pt-1">
+            <!-- Dynamic rows for additional options inserted here -->
+          </div>
+        </div>
+
         <div class="flex items-center gap-4 border-t border-gray-100 pt-3">
           <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-700">
             <input type="checkbox" id="prod-featured" class="rounded text-brand-600 focus:ring-brand-500">
@@ -2501,6 +2519,11 @@
       document.getElementById('form-admin-product').reset();
       populateProductCategorySelect();
       document.getElementById('modal-admin-prod-title').innerText = 'Novo Produto';
+      
+      // Limpa a lista de adicionais para novo produto
+      const addList = document.getElementById('admin-prod-additionals-list');
+      if (addList) addList.innerHTML = '';
+
       document.getElementById('modal-admin-product').classList.remove('hidden');
       document.getElementById('modal-admin-product').classList.add('flex');
     }
@@ -2508,6 +2531,29 @@
     function closeAdminProductModal() {
       document.getElementById('modal-admin-product').classList.add('hidden');
       document.getElementById('modal-admin-product').classList.remove('flex');
+    }
+
+    // Adiciona uma linha de complemento (nome + preço) no formulário do produto
+    function addAdminProductAdditionalRow(name = '', price = '') {
+      const container = document.getElementById('admin-prod-additionals-list');
+      if (!container) return;
+
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-200/70 admin-add-row';
+      row.innerHTML = `
+        <div class="flex-grow">
+          <input type="text" placeholder="Nome (Ex: Bacon Extra, Queijo Dobrado)" value="${name}" class="admin-add-name w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none" required>
+        </div>
+        <div class="relative w-28">
+          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+          <input type="number" step="0.5" min="0" placeholder="0,00" value="${price !== '' ? price : ''}" class="admin-add-price w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none font-bold" required>
+        </div>
+        <button type="button" onclick="this.closest('.admin-add-row').remove()" class="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg" title="Remover Complemento">
+          <i class="fa-solid fa-trash text-xs"></i>
+        </button>
+      `;
+
+      container.appendChild(row);
     }
 
     function editProduct(productId) {
@@ -2522,6 +2568,17 @@
       document.getElementById('prod-image').value = p.image;
       document.getElementById('prod-desc').value = p.description || '';
       document.getElementById('prod-featured').checked = !!p.featured;
+
+      // Carrega os complementos existentes do produto no formulário
+      const addList = document.getElementById('admin-prod-additionals-list');
+      if (addList) {
+        addList.innerHTML = '';
+        if (p.additionals && Array.isArray(p.additionals) && p.additionals.length > 0) {
+          p.additionals.forEach(add => {
+            addAdminProductAdditionalRow(add.name, add.price);
+          });
+        }
+      }
 
       document.getElementById('modal-admin-prod-title').innerText = 'Editar Produto';
       document.getElementById('modal-admin-product').classList.remove('hidden');
@@ -2545,6 +2602,19 @@
       const description = document.getElementById('prod-desc').value.trim();
       const featured = document.getElementById('prod-featured').checked;
 
+      // Coleta todos os complementos configurados no formulário
+      const additionals = [];
+      document.querySelectorAll('#admin-prod-additionals-list .admin-add-row').forEach(row => {
+        const nameInput = row.querySelector('.admin-add-name');
+        const priceInput = row.querySelector('.admin-add-price');
+        if (nameInput && priceInput && nameInput.value.trim()) {
+          additionals.push({
+            name: nameInput.value.trim(),
+            price: parseFloat(priceInput.value) || 0
+          });
+        }
+      });
+
       const pData = {
         name,
         category,
@@ -2553,7 +2623,8 @@
         image_url: image,
         description,
         featured,
-        available: true
+        available: true,
+        additionals
       };
 
       let supabaseError = null;
@@ -2567,6 +2638,7 @@
           p.image = image;
           p.description = description;
           p.featured = featured;
+          p.additionals = additionals;
         }
 
         if (_supabase) {
@@ -2615,7 +2687,7 @@
           description,
           featured,
           available: true,
-          additionals: []
+          additionals
         };
 
         if (_supabase) {
