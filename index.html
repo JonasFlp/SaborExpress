@@ -1181,6 +1181,23 @@
       state.settings = JSON.parse(localStorage.getItem('sb_settings')) || DEFAULT_SETTINGS;
       state.coupons = JSON.parse(localStorage.getItem('sb_coupons')) || DEFAULT_COUPONS;
 
+      // Restaura o carrinho e cupom ativo salvos no aparelho do cliente
+      if (!window._cartInitialized) {
+        try {
+          state.cart = JSON.parse(localStorage.getItem('sb_cart')) || [];
+          state.activeCoupon = JSON.parse(localStorage.getItem('sb_active_coupon')) || null;
+          if (state.activeCoupon) {
+            const couponMsg = document.getElementById('coupon-applied-msg');
+            const couponInp = document.getElementById('cart-coupon-input');
+            if (couponMsg) couponMsg.classList.remove('hidden');
+            if (couponInp) couponInp.value = state.activeCoupon.code;
+          }
+        } catch (e) {
+          state.cart = [];
+        }
+        window._cartInitialized = true;
+      }
+
       if (_supabase) {
         try {
           // 1. Carregar Configurações Globais da Loja
@@ -1244,9 +1261,6 @@
                 orderItems = matched.items;
               }
 
-              // Preserva o valor de troco vindo do Supabase ou do registro local
-              const resolvedCashChange = o.change_for || o.cash_change || (matched ? matched.cashChange : null);
-
               return {
                 id: o.id.substring(0, 6).toUpperCase(),
                 dbId: o.id,
@@ -1256,7 +1270,7 @@
                 address: o.delivery_address || 'Retirada',
                 orderType: o.delivery_type === 'delivery' ? 'DELIVERY' : 'TAKEOUT',
                 paymentMethod: (o.payment_method || 'PIX').toUpperCase(),
-                cashChange: resolvedCashChange,
+                cashChange: o.change_for,
                 items: orderItems,
                 subtotal: parseFloat(o.subtotal || 0),
                 deliveryFee: parseFloat(o.delivery_fee || 0),
@@ -1325,9 +1339,7 @@
       try {
         _supabase
           .channel('public:sync_all')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-            initData();
-          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initData())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, () => initData())
@@ -1344,10 +1356,10 @@
 
       if (state.settings.isOpen) {
         btn.className = "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow border bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30";
-        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span>Loja Aberta</span>`;
+        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span><span id="btn-quick-toggle-text">Loja Aberta</span>`;
       } else {
         btn.className = "px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow border bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30";
-        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span>Loja Fechada</span>`;
+        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span id="btn-quick-toggle-text">Loja Fechada</span>`;
       }
     }
 
@@ -1389,6 +1401,8 @@
       if (key === 'settings') localStorage.setItem('sb_settings', JSON.stringify(state.settings));
       if (key === 'coupons') localStorage.setItem('sb_coupons', JSON.stringify(state.coupons));
       if (key === 'orders') localStorage.setItem('sb_orders', JSON.stringify(state.orders));
+      if (key === 'cart') localStorage.setItem('sb_cart', JSON.stringify(state.cart));
+      if (key === 'activeCoupon') localStorage.setItem('sb_active_coupon', JSON.stringify(state.activeCoupon));
     }
 
     function checkSessionAndRoute() {
@@ -1674,6 +1688,7 @@
       };
 
       state.cart.push(cartItem);
+      saveDataLocally('cart');
       showToast('Item adicionado ao carrinho!', 'success');
       closeProductModal();
       updateCartUI();
@@ -1764,11 +1779,13 @@
       if (item.quantity <= 0) {
         state.cart = state.cart.filter(i => i.cartItemId !== cartItemId);
       }
+      saveDataLocally('cart');
       updateCartUI();
     }
 
     function removeCartItem(cartItemId) {
       state.cart = state.cart.filter(i => i.cartItemId !== cartItemId);
+      saveDataLocally('cart');
       updateCartUI();
     }
 
@@ -1810,6 +1827,7 @@
       if (subtotal < coupon.minOrder) return showToast(`Pedido mínimo de R$ ${coupon.minOrder.toFixed(2)}`, 'error');
 
       state.activeCoupon = coupon;
+      saveDataLocally('activeCoupon');
       document.getElementById('coupon-applied-msg').classList.remove('hidden');
       showToast('Cupom aplicado!', 'success');
       calculateCartTotals();
@@ -1817,6 +1835,7 @@
 
     function removeCoupon() {
       state.activeCoupon = null;
+      saveDataLocally('activeCoupon');
       document.getElementById('coupon-applied-msg').classList.add('hidden');
       document.getElementById('cart-coupon-input').value = '';
       calculateCartTotals();
@@ -1962,6 +1981,8 @@
 
       state.cart = [];
       state.activeCoupon = null;
+      saveDataLocally('cart');
+      saveDataLocally('activeCoupon');
       updateCartUI();
 
       closeCheckoutModal();
@@ -2151,6 +2172,7 @@
       if (!order) return;
 
       state.cart = [...order.items];
+      saveDataLocally('cart');
       updateCartUI();
       closeHistoryModal();
       openCartDrawer();
